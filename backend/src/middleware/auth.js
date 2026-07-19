@@ -2,6 +2,14 @@ const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'roadpulse-hackathon-secret-key-do-not-use-in-production';
 
+/** Normalize base64 / base64url so verify matches tokens signed either way */
+function normalizeB64(s) {
+  return String(s || '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
 function verifyJWT(token) {
   try {
     const parts = token.split('.');
@@ -9,11 +17,14 @@ function verifyJWT(token) {
 
     const [header, payload, signature] = parts;
     const message = `${header}.${payload}`;
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(message).digest('base64');
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(message).digest('base64url');
 
-    if (signature !== expected) return null;
+    if (normalizeB64(signature) !== normalizeB64(expected)) return null;
 
-    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+    // base64url decode payload
+    const padded = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
+    const decoded = JSON.parse(Buffer.from(padded + pad, 'base64').toString('utf8'));
 
     if (decoded.exp && Date.now() >= decoded.exp * 1000) return null;
 

@@ -200,14 +200,9 @@ export default function Login({ mode = 'login' }) {
                 </p>
               )}
             </div>
-          ) : (
-            <div className="alert alert-info" style={{ marginBottom: 16 }}>
-              Google Sign-In needs <code>VITE_GOOGLE_CLIENT_ID</code> (and matching{' '}
-              <code>GOOGLE_CLIENT_ID</code> on the backend). Until then, use email or Quick demo.
-            </div>
-          )}
+          ) : null}
 
-          <div className="auth-divider"><span>or use email</span></div>
+          <div className="auth-divider"><span>{GOOGLE_CLIENT_ID ? 'or use email' : 'Sign in with email'}</span></div>
 
           <form onSubmit={handleEmailAuth}>
             <div className="form-group">

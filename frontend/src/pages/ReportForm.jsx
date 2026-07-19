@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CameraCapture from '../components/CameraCapture';
-import { getCurrentUser, reportsAPI } from '../api/client';
+import { getCurrentUser, reportsAPI, setAuthToken, setCurrentUser } from '../api/client';
+import { useI18n } from '../i18n';
 
 export default function ReportForm() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const user = getCurrentUser();
   const [step, setStep] = useState(1);
   const [photos, setPhotos] = useState([]);
+  const [videoClip, setVideoClip] = useState(null);
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
   const [timestamp, setTimestamp] = useState(null);
@@ -45,6 +48,7 @@ export default function ReportForm() {
       return;
     }
     setPhotos(data.photos);
+    setVideoClip(data.video || null);
     setLatitude(data.latitude);
     setLongitude(data.longitude);
     setTimestamp(data.timestamp);
@@ -58,6 +62,13 @@ export default function ReportForm() {
     }
   }, [step, latitude, longitude, fetchLandmark]);
 
+  const removeReviewPhoto = (index) => {
+    const next = photos.filter((_, i) => i !== index);
+    setPhotos(next);
+    setError('');
+    setStep(1); // CameraCapture resumes with remaining photos + open camera
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -66,6 +77,11 @@ export default function ReportForm() {
     try {
       if (!user) {
         setError('You must be signed in to submit a report');
+        return;
+      }
+      if (photos.length < 2) {
+        setError('At least 2 photos are required. Remove empty slots and retake.');
+        setStep(1);
         return;
       }
 
@@ -97,7 +113,15 @@ export default function ReportForm() {
       setSuccessIncidentId(response.incident_id);
       setStep(4);
     } catch (err) {
-      setError(err.message || 'Failed to submit report');
+      const msg = err.message || 'Failed to submit report';
+      if (/invalid or expired token|authentication required/i.test(msg)) {
+        setAuthToken(null);
+        setCurrentUser(null);
+        setError('Your session expired. Please sign in again, then resubmit.');
+        setTimeout(() => navigate('/login', { state: { from: '/report' } }), 1200);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -116,9 +140,9 @@ export default function ReportForm() {
   return (
     <div className="container page animate-in" style={{ maxWidth: 640 }}>
       <p className="eyebrow">Citizen report</p>
-      <h1>Report a road issue</h1>
+      <h1>{t('report_title')}</h1>
       <p className="text-muted text-small" style={{ marginBottom: 20 }}>
-        Confirm GPS first → 2–4 live photos (stamped) → landmark → submit.
+        {t('report_sub')}
       </p>
 
       <div className="stepper">
@@ -131,7 +155,14 @@ export default function ReportForm() {
       {step === 1 && (
         <div className="panel">
           {error && <div className="alert alert-error">{error}</div>}
-          <CameraCapture onCapture={handlePhotosCapture} maxPhotos={2} />
+          <CameraCapture
+            key={`capture-${photos.map((p) => p.timestamp).join('|') || 'new'}`}
+            onCapture={handlePhotosCapture}
+            minPhotos={2}
+            maxPhotos={4}
+            initialPhotos={photos}
+            skipGuide={photos.length > 0}
+          />
         </div>
       )}
 
@@ -183,16 +214,27 @@ export default function ReportForm() {
 
       {step === 3 && (
         <div className="panel">
-          <h2>Review & submit</h2>
+          <h2>{t('review')}</h2>
           {error && <div className="alert alert-error">{error}</div>}
           <div className="image-gallery" style={{ marginBottom: 16 }}>
             {photos.map((photo, index) => (
-              <div key={index} className="photo-thumb-wrap">
+              <div key={`${photo.timestamp}-${index}`} className="photo-thumb-wrap">
                 <img src={photo.previewUrl} alt={photo.label} className="image-thumbnail" />
                 <span className="photo-label">{photo.label}</span>
+                <button
+                  type="button"
+                  className="photo-remove"
+                  aria-label="Remove and retake"
+                  onClick={() => removeReviewPhoto(index)}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
+          {videoClip && (
+            <video src={videoClip.previewUrl} controls className="video-preview" style={{ marginBottom: 12 }} />
+          )}
           <p><strong>Description:</strong> {description || 'None'}</p>
           <p><strong>Location:</strong> {landmark || '—'}</p>
           <p><strong>GPS:</strong> {latitude?.toFixed(5)}, {longitude?.toFixed(5)}</p>
@@ -200,7 +242,7 @@ export default function ReportForm() {
             <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>
               Back
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+            <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading || photos.length < 2}>
               {loading ? 'Running AI pipeline…' : 'Submit report'}
             </button>
           </div>

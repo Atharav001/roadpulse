@@ -2,14 +2,19 @@
 
 ## Add these now (minimum for a solid demo)
 
+Full walkthrough with screenshots-style steps: see [`DEMO_SETUP.md`](../DEMO_SETUP.md).
+
 | # | What | Env var | Where to get | Cost |
 |---|------|---------|--------------|------|
 | 1 | **Postgres** | `DATABASE_URL` | [Neon](https://neon.tech) or [Supabase](https://supabase.com) | Free tier |
-| 2 | **Gemini API key** (vision + email draft) | `VISION_MODEL_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) | Free tier (generous) |
-| 3 | **Google OAuth Web Client ID** | `GOOGLE_CLIENT_ID` + `VITE_GOOGLE_CLIENT_ID` | [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials) | Free |
-| 4 | Hosted backend URL | `VITE_API_URL` on Vercel | Railway / Render / Fly | Free tier |
+| 2 | **Gemini API key** (vision + email draft) | `VISION_MODEL_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) | Free tier (generous) — **Plan A** |
+| 3 | Hosted backend | — | [Railway](https://railway.app) (easiest) or [Render](https://render.com) | Free tier |
+| 4 | Frontend | `VITE_API_URL` | [Vercel](https://vercel.com) — root `frontend` | Free |
+| 5 | **Google OAuth** (optional) | `GOOGLE_CLIENT_ID` + `VITE_GOOGLE_CLIENT_ID` | [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials) | Free |
 
 Set backend: `VISION_MODEL_PROVIDER=gemini`
+
+Landmarks work without Places via OpenStreetMap reverse geocode (free).
 
 Optional but recommended for landmarks:
 

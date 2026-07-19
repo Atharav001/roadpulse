@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'roadpulse_last_location';
+/** Never trust a cached pin older than this — prevents Manipal leftover while you’re in Delhi */
+const CACHE_MAX_AGE_MS = 2 * 60 * 1000;
 const LocationContext = createContext(null);
 
 function readStored() {
@@ -9,7 +11,12 @@ function readStored() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.latitude == null || parsed?.longitude == null) return null;
-    return parsed;
+    const age = Date.now() - new Date(parsed.timestamp || 0).getTime();
+    if (!Number.isFinite(age) || age > CACHE_MAX_AGE_MS) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return { ...parsed, source: 'cached' };
   } catch {
     return null;
   }
@@ -20,13 +27,13 @@ function persist(loc) {
 }
 
 export function LocationProvider({ children }) {
-  const [location, setLocation] = useState(() => readStored());
-  const [status, setStatus] = useState(location ? 'cached' : 'idle');
+  const [location, setLocation] = useState(null);
+  const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
-  const [accuracy, setAccuracy] = useState(location?.accuracy ?? null);
+  const [accuracy, setAccuracy] = useState(null);
 
   const requestLocation = useCallback((opts = {}) => {
-    const { force = false, maximumAge = force ? 0 : 60000 } = opts;
+    const { force = true } = opts;
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         const msg = 'Geolocation is not supported on this device/browser.';
@@ -45,7 +52,7 @@ export function LocationProvider({ children }) {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
-            timestamp: new Date(pos.timestamp || Date.now()).toISOString(),
+            timestamp: new Date().toISOString(),
             source: 'gps',
           };
           setLocation(next);
@@ -55,31 +62,47 @@ export function LocationProvider({ children }) {
           resolve(next);
         },
         (err) => {
-          const cached = readStored();
-          if (cached && !force) {
-            setLocation(cached);
-            setStatus('cached');
-            setError('Live GPS unavailable — using your last saved location.');
-            resolve(cached);
-            return;
+          // Never silently reuse a stale city (e.g. Manipal while you are in Delhi)
+          if (!force) {
+            const cached = readStored();
+            if (cached) {
+              setLocation(cached);
+              setAccuracy(cached.accuracy ?? null);
+              setStatus('cached');
+              setError('Live GPS unavailable — using a very recent pin. Tap Refresh for a new reading.');
+              resolve(cached);
+              return;
+            }
           }
           const msg =
             err.code === 1
-              ? 'Location permission denied. Enable location for precise reporting and community issues.'
-              : 'Could not read GPS. Enable location and try again.';
+              ? 'Location permission denied. Enable location for precise reporting.'
+              : 'Could not read live GPS. Enable location / turn on precise location and try Refresh.';
           setError(msg);
           setStatus('denied');
           reject(new Error(msg));
         },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge }
+        {
+          enableHighAccuracy: true,
+          timeout: 25000,
+          // Always prefer a fresh reading for reporting
+          maximumAge: force ? 0 : 15000,
+        }
       );
     });
   }, []);
 
-  // Ask for location when the site opens
+  // Fresh GPS on app open — do not hydrate from old Manipal/Bangalore cache
   useEffect(() => {
-    requestLocation({ force: false }).catch(() => {});
+    localStorage.removeItem(STORAGE_KEY);
+    requestLocation({ force: true }).catch(() => {});
   }, [requestLocation]);
+
+  const clearCachedLocation = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setLocation(null);
+    setStatus('idle');
+  }, []);
 
   const value = {
     location,
@@ -87,6 +110,7 @@ export function LocationProvider({ children }) {
     error,
     accuracy,
     requestLocation,
+    clearCachedLocation,
     hasLocation: !!(location?.latitude != null && location?.longitude != null),
   };
 

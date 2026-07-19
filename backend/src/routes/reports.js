@@ -143,7 +143,12 @@ function createReportsRouter(pool) {
       }
 
       const finalLandmark = landmark_description || landmark.landmark_description;
-      const finalWard = landmark.ward_id && landmark.ward_id !== 'unknown' ? landmark.ward_id : null;
+      const finalWard =
+        landmark.ward_id &&
+        landmark.ward_id !== 'unknown' &&
+        landmark.ward_id !== 'unmapped'
+          ? landmark.ward_id
+          : null;
 
       // 3. Clustering Agent
       let incidentId = null;
