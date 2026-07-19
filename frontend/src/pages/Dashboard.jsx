@@ -5,6 +5,7 @@ import IncidentCard from '../components/IncidentCard';
 import { ResolutionRing, SegmentPool } from '../components/PoolChart';
 import { IconAlert, IconChart } from '../components/Icons';
 import { dashboardAPI, wardsAPI } from '../api/client';
+import { useI18n } from '../i18n';
 
 const STATUS_COLORS = {
   reported: '#C45C26',
@@ -20,14 +21,8 @@ const SEVERITY_COLORS = {
   low: '#2F6B4F',
 };
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'pending', label: 'Pending pool' },
-  { id: 'escalated', label: 'Escalated' },
-];
-
-function StatusBars({ data }) {
-  if (!data?.length) return <p className="text-muted text-small">No status data yet.</p>;
+function StatusBars({ data, emptyLabel }) {
+  if (!data?.length) return <p className="text-muted text-small">{emptyLabel}</p>;
   const max = Math.max(...data.map((s) => s.count), 1);
   return (
     <div className="bar-chart">
@@ -50,6 +45,7 @@ function StatusBars({ data }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [wards, setWards] = useState([]);
   const [selectedWard, setSelectedWard] = useState('');
   const [tab, setTab] = useState('overview');
@@ -58,6 +54,12 @@ export default function Dashboard() {
   const [escalated, setEscalated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const tabs = [
+    { id: 'overview', label: t('dash_tab_overview') },
+    { id: 'pending', label: t('dash_tab_pending') },
+    { id: 'escalated', label: t('dash_tab_escalated') },
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -153,10 +155,10 @@ export default function Dashboard() {
       <div className="container">
         <div className="dash-top">
           <div>
-            <p className="eyebrow">Transparency console</p>
-            <h1>Ward intelligence</h1>
+            <p className="eyebrow">{t('dash_eyebrow')}</p>
+            <h1>{t('dash_title')}</h1>
             <p className="text-muted text-small" style={{ margin: 0 }}>
-              Pooled issue representation · resolution performance · public escalation watch.
+              {t('dash_sub')}
             </p>
           </div>
           <div className="dash-controls">
@@ -172,33 +174,33 @@ export default function Dashboard() {
               ))}
             </select>
             <button type="button" className="btn btn-accent" onClick={() => navigate('/report')}>
-              Report issue
+              {t('dash_report')}
             </button>
           </div>
         </div>
 
         {overview && (
           <div className="city-strip">
-            <div><span>City open</span><strong>{overview.open_count}</strong></div>
-            <div><span>City resolved</span><strong>{overview.resolved_count}</strong></div>
-            <div><span>Resolution rate</span><strong>{overview.resolution_rate_percent}%</strong></div>
-            <div><span>Total incidents</span><strong>{overview.total_incidents}</strong></div>
+            <div><span>{t('dash_city_open')}</span><strong>{overview.open_count}</strong></div>
+            <div><span>{t('dash_city_resolved')}</span><strong>{overview.resolved_count}</strong></div>
+            <div><span>{t('dash_city_rate')}</span><strong>{overview.resolution_rate_percent}%</strong></div>
+            <div><span>{t('dash_city_total')}</span><strong>{overview.total_incidents}</strong></div>
           </div>
         )}
 
         <div className="dash-tabs" role="tablist">
-          {TABS.map((t) => (
+          {tabs.map((item) => (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
               role="tab"
-              aria-selected={tab === t.id}
-              className={tab === t.id ? 'active' : ''}
-              onClick={() => setTab(t.id)}
+              aria-selected={tab === item.id}
+              className={tab === item.id ? 'active' : ''}
+              onClick={() => setTab(item.id)}
             >
-              {t.label}
-              {t.id === 'pending' && <em>{pending.length}</em>}
-              {t.id === 'escalated' && <em>{escalated.length}</em>}
+              {item.label}
+              {item.id === 'pending' && <em>{pending.length}</em>}
+              {item.id === 'escalated' && <em>{escalated.length}</em>}
             </button>
           ))}
         </div>
@@ -207,7 +209,7 @@ export default function Dashboard() {
           <div className="alert alert-error">
             {error}
             <button type="button" className="btn btn-secondary btn-small" style={{ marginLeft: 12 }} onClick={loadWard}>
-              Retry
+              {t('dash_retry')}
             </button>
           </div>
         )}
@@ -221,10 +223,10 @@ export default function Dashboard() {
         {!loading && stats && stats.total_incidents === 0 && (
           <div className="empty-state">
             <IconChart />
-            <h3>No incidents in this ward yet</h3>
-            <p className="text-muted">Choose another ward or file the first report.</p>
+            <h3>{t('dash_empty_title')}</h3>
+            <p className="text-muted">{t('dash_empty_sub')}</p>
             <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/report')}>
-              Report an issue
+              {t('dash_empty_cta')}
             </button>
           </div>
         )}
@@ -232,45 +234,45 @@ export default function Dashboard() {
         {!loading && stats && stats.total_incidents > 0 && tab === 'overview' && (
           <>
             <div className="stat-grid">
-              <StatCard title="Incidents" value={stats.total_incidents} hint={stats.ward_name || selectedWard} />
-              <StatCard title="Resolved" value={stats.resolved_count} tone="success" hint="Closed by authority" />
+              <StatCard title={t('dash_stat_incidents')} value={stats.total_incidents} hint={stats.ward_name || selectedWard} />
+              <StatCard title={t('dash_stat_resolved')} value={stats.resolved_count} tone="success" hint={t('dash_stat_resolved_hint')} />
               <StatCard
-                title="Resolution rate"
+                title={t('dash_stat_rate')}
                 value={`${stats.resolution_rate_percent}%`}
                 tone={stats.resolution_rate_percent >= 70 ? 'success' : 'warning'}
-                hint="Resolved / total"
+                hint={t('dash_stat_rate_hint')}
               />
-              <StatCard title="Avg response" value={`${stats.avg_response_time_hours}h`} tone="muted" hint="Time to resolve" />
+              <StatCard title={t('dash_stat_avg')} value={`${stats.avg_response_time_hours}h`} tone="muted" hint={t('dash_stat_avg_hint')} />
             </div>
 
             <div className="analytics-grid">
               <div className="panel analytics-hero">
                 <div className="panel-head">
-                  <h3>Resolution health</h3>
+                  <h3>{t('dash_health')}</h3>
                 </div>
                 <div className="ring-row">
-                  <ResolutionRing percent={stats.resolution_rate_percent} label="Resolved" />
+                  <ResolutionRing percent={stats.resolution_rate_percent} label={t('dash_resolved_label')} />
                   <div className="ring-meta">
-                    <p><strong>{stats.open_count}</strong> still open</p>
-                    <p><strong>{stats.resolved_count}</strong> closed</p>
+                    <p><strong>{stats.open_count}</strong> {t('dash_still_open')}</p>
+                    <p><strong>{stats.resolved_count}</strong> {t('dash_closed')}</p>
                     <p className="text-muted text-small">
-                      Ward performance is public — rates update when authorities resolve incidents.
+                      {t('dash_health_note')}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="panel">
-                <SegmentPool title="Issue status pool" segments={statusSegments} />
+                <SegmentPool title={t('dash_status_pool')} segments={statusSegments} />
               </div>
 
               <div className="panel">
-                <SegmentPool title="Open issues by type" segments={typeSegments} emptyLabel="No open issue types." />
+                <SegmentPool title={t('dash_type_pool')} segments={typeSegments} emptyLabel={t('dash_type_empty')} />
               </div>
 
               <div className="panel">
-                <div className="panel-head"><h3>Status volume</h3></div>
-                <StatusBars data={stats.by_status} />
+                <div className="panel-head"><h3>{t('dash_status_vol')}</h3></div>
+                <StatusBars data={stats.by_status} emptyLabel={t('dash_no_status')} />
               </div>
             </div>
           </>
@@ -280,17 +282,17 @@ export default function Dashboard() {
           <div className="dash-layout">
             <div className="panel">
               <div className="panel-head">
-                <h3>Pending severity pool</h3>
+                <h3>{t('dash_sev_pool')}</h3>
                 <span className="badge badge-reported">{pending.length}</span>
               </div>
-              <SegmentPool segments={severitySegments} emptyLabel="No open incidents in this ward." />
+              <SegmentPool segments={severitySegments} emptyLabel={t('dash_sev_empty')} />
             </div>
             <div className="panel">
               <div className="panel-head">
-                <h3>Open queue</h3>
+                <h3>{t('dash_open_queue')}</h3>
               </div>
               {!pending.length ? (
-                <div className="empty-inline">Queue clear for this ward.</div>
+                <div className="empty-inline">{t('dash_queue_clear')}</div>
               ) : (
                 pending.map((i) => <IncidentCard key={i.id} incident={i} />)
               )}
@@ -303,16 +305,16 @@ export default function Dashboard() {
             <div className="panel-head">
               <div>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <IconAlert /> Escalated · 60+ days open
+                  <IconAlert /> {t('dash_esc_title')}
                 </h3>
                 <p className="text-small text-muted" style={{ margin: '6px 0 0' }}>
-                  Long-standing issues flagged for public attention.
+                  {t('dash_esc_sub')}
                 </p>
               </div>
               <span className="badge badge-escalated">{escalated.length}</span>
             </div>
             {!escalated.length ? (
-              <div className="empty-inline">No escalated incidents in this ward.</div>
+              <div className="empty-inline">{t('dash_esc_empty')}</div>
             ) : (
               escalated.map((i) => <IncidentCard key={i.id} incident={i} />)
             )}

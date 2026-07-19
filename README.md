@@ -1,299 +1,201 @@
-# 🚗 RoadPulse
+# RoadPulse
 
-**A web app where citizens report road and traffic problems (potholes, accidents, congestion, etc.) for city authorities to address.**
+**Civic road accountability** — citizens report live geotagged damage; AI classifies, merges duplicates, routes departments, and exposes ward performance on a public dashboard.
 
----
-
-## 🚀 Quick Start for Judges
-
-**⏱️ Get running in < 5 minutes:**
-→ **[QUICKSTART.md](./QUICKSTART.md)** — Clone, install, run.
-
-**✅ Verify all 10 features:**
-→ **[JUDGE_TEST_FLOW.md](./JUDGE_TEST_FLOW.md)** — Exact steps, expected results, database proofs.
-
-**📐 Understand the architecture:**
-→ **[ARCHITECTURE.md](./ARCHITECTURE.md)** — System design, agents, database, APIs.
+| | |
+|---|---|
+| **Live app** | [https://roadpulse-omega.vercel.app](https://roadpulse-omega.vercel.app) |
+| **API** | [https://roadpulse-production.up.railway.app](https://roadpulse-production.up.railway.app) |
+| **Stack** | React (Vite) · Express · PostgreSQL (Neon) · Gemini Flash |
 
 ---
 
-## 🎯 The 10 Hackathon Features
+## Problem statement
 
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | Citizens submit reports with photos & GPS | ✅ |
-| 2 | Auto-classification (pothole, accident, etc.) | ✅ |
-| 3 | Auto-landmark detection (location names) | ✅ |
-| 4 | Duplicate detection & merging (clustering) | ✅ |
-| 5 | Automatic department routing | ✅ |
-| 6 | Authority incident queue | ✅ |
-| 7 | Status tracking & resolution | ✅ |
-| 8 | Auto-draft complaint emails | ✅ |
-| 9 | Public dashboard with stats | ✅ |
-| 10 | Graceful fallbacks (resilient to API failures) | ✅ |
+Cities receive the same pothole dozens of times, with gallery photos from the wrong place, no landmark, and no public trail of whether anything was fixed. RoadPulse closes that gap:
+
+1. **Credible intake** — GPS confirmed before camera; 2–4 live photos stamped with coordinates + time (gallery blocked).
+2. **Less duplicate noise** — same issue type within ~15m merges into one incident; all reporters and photos kept.
+3. **Actionable routing** — severity + type → department; draft complaint email ready to send.
+4. **Public accountability** — ward resolution rates, pending pools, and escalations visible without login.
+
+Built for the Product Space × Code Benders hackathon (Manipal / multi-city demos).
 
 ---
 
-## 📦 Project Structure
+## Architecture summary
+
+```
+┌─────────────────────┐     HTTPS      ┌──────────────────────┐
+│  Vercel (frontend)  │ ─────────────► │  Railway (Express)   │
+│  React + Vite PWA   │                │  /auth /reports …    │
+└─────────────────────┘                └──────────┬───────────┘
+                                                  │
+                       ┌──────────────────────────┼──────────────────────────┐
+                       ▼                          ▼                          ▼
+                 Neon Postgres              Gemini Flash              OSM / Places
+                 users, reports,            classify +                landmarks
+                 incidents, wards           email draft
+```
+
+**Report pipeline (in order):** Classification → Landmark → Clustering (~15m) → Routing → Email draft.
+
+**Auth:** Email/password, Quick Demo users, optional Google Identity Services (ID token verified on API).
+
+**i18n:** English · हिन्दी · ಕನ್ನಡ (nav language switcher; brand wordmark **RoadPulse** stays fixed).
+
+---
+
+## Demo credentials (after seed)
+
+| Role | Email | Password |
+|------|--------|----------|
+| Citizen | `citizen@roadpulse.local` | `password123` |
+| Authority | `authority@roadpulse.local` | `password123` |
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL (local) **or** Neon connection string
+- Optional: Gemini API key, Google OAuth Web Client ID
+
+### 1. Clone & install
+
+```bash
+git clone <your-repo-url> roadpulse
+cd roadpulse
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+### 2. Backend env (`backend/.env`)
+
+```env
+DATABASE_URL=postgresql://...
+PORT=5001
+JWT_SECRET=change-me
+VISION_MODEL_PROVIDER=gemini
+VISION_MODEL_API_KEY=your_gemini_key
+DEMO_MODE=true
+CLUSTERING_DISTANCE_THRESHOLD=15
+CORS_ORIGINS=http://localhost:3000,https://roadpulse-omega.vercel.app
+CORS_ALLOW_VERCEL=true
+GOOGLE_CLIENT_ID=          # optional — enables Google Sign-In
+```
+
+```bash
+cd backend
+npm run migrate
+npm run seed
+npm run dev                # http://localhost:5001
+```
+
+Health check: `GET /health` → `{"status":"OK"}`
+
+### 3. Frontend
+
+```bash
+cd frontend
+# Dev: Vite proxies /api → localhost:5001
+npm run dev                # http://localhost:3000
+```
+
+Production (Vercel) env:
+
+```env
+VITE_API_URL=https://roadpulse-production.up.railway.app
+VITE_GOOGLE_CLIENT_ID=     # optional if GOOGLE_CLIENT_ID is set on Railway
+```
+
+### 4. Deploy (current production)
+
+| Layer | Host | Root / notes |
+|-------|------|----------------|
+| DB | [Neon](https://neon.tech) | `DATABASE_URL` |
+| API | [Railway](https://railway.app) | Root `backend` · `npm start` · migrate + seed once |
+| Web | [Vercel](https://vercel.com) | Root `frontend` · set `VITE_API_URL` |
+
+Google Sign-In: set `GOOGLE_CLIENT_ID` on Railway (OAuth Web client). Authorized JavaScript origins must include `http://localhost:3000` and `https://roadpulse-omega.vercel.app`. The login page always shows **Continue with Google**; it activates once the Client ID is present on the API.
+
+Full checklist: [`DEMO_SETUP.md`](./DEMO_SETUP.md) · API keys: [`docs/API_KEYS.md`](./docs/API_KEYS.md)
+
+---
+
+## Screenshots
+
+> Drop PNGs into `docs/screenshots/` and they will render below. Suggested captures for judges:
+
+| File | Capture |
+|------|---------|
+| `docs/screenshots/01-home.png` | Home hero + live city pulse |
+| `docs/screenshots/02-report.png` | Photo guidance + live camera |
+| `docs/screenshots/03-dashboard.png` | Ward intelligence / resolution ring |
+| `docs/screenshots/04-community.png` | Nearby community issues |
+| `docs/screenshots/05-authority.png` | Authority queue (Quick Demo → Authority) |
+| `docs/screenshots/06-i18n.png` | Same screen in हिन्दी |
+
+![Home](docs/screenshots/01-home.png)
+
+![Report flow](docs/screenshots/02-report.png)
+
+![Dashboard](docs/screenshots/03-dashboard.png)
+
+![Community](docs/screenshots/04-community.png)
+
+![Authority](docs/screenshots/05-authority.png)
+
+![Hindi UI](docs/screenshots/06-i18n.png)
+
+---
+
+## Key features
+
+| # | Feature |
+|---|---------|
+| 1 | Live GPS-first report intake (2–4 stamped photos, optional short video) |
+| 2 | AI issue classification + severity (Gemini Flash, graceful fallback) |
+| 3 | Landmark / reverse-geocode (Places or OpenStreetMap) |
+| 4 | Duplicate clustering (~15m, same issue type) |
+| 5 | Department routing + complaint email draft |
+| 6 | Public ward dashboard (pools, resolution rate, escalations) |
+| 7 | Community nearby map list |
+| 8 | Authority resolve queue |
+| 9 | EN / HI / KN UI language switcher |
+| 10 | Demo-resilient fallbacks when keys are missing |
+
+---
+
+## Project layout
 
 ```
 roadpulse/
-├── QUICKSTART.md              ← Start here (judges)
-├── JUDGE_TEST_FLOW.md         ← Test scenarios (judges)
-├── ARCHITECTURE.md            ← System design (builders)
-├── .env.example.complete      ← Config template
-│
-├── backend/                   ← Express.js + AI agents
-│  ├── src/
-│  │  ├── agents/              [5-agent pipeline]
-│  │  ├── routes/              [API endpoints]
-│  │  ├── models/              [Database layer]
-│  │  └── db/                  [Migrations & seeding]
-│  └── package.json
-│
-└── frontend/                  ← React SPA (Vite)
-   ├── src/
-   │  ├── pages/               [Citizen, Authority, Public views]
-   │  ├── components/          [Reusable UI]
-   │  └── api/                 [Backend client]
-   └── package.json
+├── README.md                 ← you are here
+├── DEMO_SETUP.md             ← deploy checklist
+├── backend/                  ← Express API + agents
+│   └── src/agents/           ← classify, landmark, cluster, route, email
+└── frontend/                 ← React (Vite) UI
+    └── src/i18n/strings.json ← EN / HI / KN
 ```
 
 ---
 
-## 💻 Tech Stack
+## Judge quick path (5 minutes)
 
-### Backend
-- **Express.js** — HTTP server
-- **PostgreSQL** — Data storage
-- **Node.js** — JavaScript runtime
-- **Axios** — HTTP client for external APIs
+1. Open [live app](https://roadpulse-omega.vercel.app)  
+2. Sign in → **Quick demo → Citizen**  
+3. Report → confirm GPS → follow photo guidance → submit  
+4. Open **Dashboard** (no login) → ward tabs  
+5. Sign out → **Quick demo → Authority** → resolve an item  
+6. Switch language to **हिन्दी** / **ಕನ್ನಡ** in the nav  
 
-### Frontend
-- **React 18** — UI framework
-- **Vite** — Build tool
-- **React Router** — Client routing
-
-### AI / External APIs
-- **Gemini 2.5 Flash** or **GPT-4 Mini** — Issue classification
-- **Google Places API** — Landmark detection
-- **Google Geocoding API** — Reverse geocoding
+Local: `backend` on `:5001`, `frontend` on `:3000` (see Setup).
 
 ---
 
-## 🎮 Demo Credentials
+## License
 
-Use these to log in locally:
-
-| Role | Email | Password |
-|------|-------|----------|
-| Authority | `authority@roadpulse.local` | `password123` |
-| Citizen | `citizen@roadpulse.local` | `password123` |
-
----
-
-## 🏗️ System Architecture at a Glance
-
-When a citizen submits a report, a **5-agent pipeline** automatically:
-
-1. **Classifies** the issue (pothole, accident, congestion, etc.)
-2. **Detects** the landmark/location name
-3. **Clusters** duplicate nearby reports into one incident
-4. **Routes** to the correct department
-5. **Drafts** a formal complaint email
-
-All with **graceful fallbacks** — if any API fails, the report still submits.
-
-```
-Citizen Report
-    ↓
-[Classification Agent] → issue_type, severity
-    ↓
-[Landmark Agent] → location name
-    ↓
-[Clustering Agent] → merge or create incident
-    ↓
-[Routing Agent] → assign department
-    ↓
-[Email Draft Agent] → formal complaint
-    ↓
-Authority sees incident in queue
-```
-
----
-
-## 📖 Documentation
-
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| **[QUICKSTART.md](./QUICKSTART.md)** | **Judges / Anyone** | Get running in < 5 min |
-| **[JUDGE_TEST_FLOW.md](./JUDGE_TEST_FLOW.md)** | **Judges** | Test all 10 features |
-| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | **Builders** | System design deep-dive |
-| **[.env.example.complete](./.env.example.complete)** | **Ops / DevOps** | Full config reference |
-| `backend/AGENTS_SETUP.md` | **Builders** | Agent implementation details |
-| `backend/README_ROUTES.md` | **API users** | Full API contract |
-| `backend/DEPLOYMENT_GUIDE.md` | **DevOps** | Production deployment |
-
----
-
-## 🧪 Testing
-
-### Run Agent Tests
-```bash
-cd backend
-npm test
-```
-
-### Manual Integration Testing
-Follow **[JUDGE_TEST_FLOW.md](./JUDGE_TEST_FLOW.md)** for step-by-step verification.
-
----
-
-## 🚀 Deployment
-
-### Local Development
-1. Follow **[QUICKSTART.md](./QUICKSTART.md)**
-2. Backend: `http://localhost:5000`
-3. Frontend: `http://localhost:5173`
-
-### Production
-See **`backend/DEPLOYMENT_GUIDE.md`** for:
-- Environment configuration
-- Database setup (managed PostgreSQL)
-- API key management
-- Monitoring & logging
-
----
-
-## 🛠️ Key APIs
-
-### For Citizens
-- `POST /api/reports` — Submit a report
-- `GET /api/reports` — View my reports
-
-### For Authorities
-- `GET /api/incidents` — View incident queue
-- `PATCH /api/incidents/:id` — Update incident status
-
-### Public
-- `GET /api/dashboard` — View public stats
-
-See **`backend/README_ROUTES.md`** for full API contract.
-
----
-
-## 💾 Database
-
-PostgreSQL with 5 core tables:
-- `users` — Citizens & authorities
-- `reports` — Individual submissions
-- `incidents` — Merged incident clusters
-- `wards` — Geographic regions
-- `departments` — Response teams
-
-See **[ARCHITECTURE.md](./ARCHITECTURE.md#database-schema)** for schema details.
-
----
-
-## ✨ Key Features Explained
-
-### Automatic Classification
-Photos & description → AI model → Issue type (pothole, accident, etc.) + severity
-
-### Smart Clustering
-If 2+ reports within 30m → Merge into 1 incident (shows "3 reports merged")
-
-### Graceful Fallbacks
-All API calls have fallbacks:
-- Classification → `"unclassified"` if API fails
-- Landmark → `"<Ward> area"` if API fails
-- Routing → `"general_maintenance"` if unmapped
-- Email → Hardcoded template if API fails
-
-### Authority Workflow
-1. View incident queue (filtered by status/severity)
-2. Click incident to see all linked reports
-3. Update status: reported → in_progress → resolved
-4. Dashboard stats update in real-time
-
----
-
-## 📊 Database Workflow
-
-```
-Citizen submits report
-    ↓
-INSERT into reports table
-    ↓
-Clustering agent checks for duplicates
-    ├─ Found within 30m? INSERT into incidents (if new)
-    │                   INSERT into incident_reports (link)
-    └─ Not found?       INSERT into incidents (new)
-    ↓
-Authority sees incident in queue
-    ↓
-Authority updates status
-    ↓
-UPDATE incidents SET status = 'resolved'
-```
-
----
-
-## 🔒 Security Considerations
-
-- JWT tokens for authentication
-- Password hashing (bcrypt)
-- Request validation on all endpoints
-- Rate limiting (optional, for production)
-- HTTPS in production (reverse proxy)
-
----
-
-## 📝 License
-
-MIT
-
----
-
-## 🤝 Contributing
-
-This is a hackathon project. For modifications or contributions:
-1. Read **[ARCHITECTURE.md](./ARCHITECTURE.md)** for system design
-2. Check **`backend/AGENTS_SETUP.md`** for agent details
-3. Follow the existing code structure in `backend/src/` and `frontend/src/`
-
----
-
-## ❓ FAQ
-
-**Q: How do I log in?**
-A: Use demo credentials (see table above) or create a new user via `/api/auth/register`.
-
-**Q: What if I don't have API keys?**
-A: Use placeholder strings; the system has graceful fallbacks. (See `DEMO_MODE` in `.env.example.complete`.)
-
-**Q: Can I run without PostgreSQL?**
-A: No, but you can use a managed service (AWS RDS, Heroku Postgres, etc.). Update `DATABASE_URL` in `.env`.
-
-**Q: How do I verify Feature X is working?**
-A: Follow **[JUDGE_TEST_FLOW.md](./JUDGE_TEST_FLOW.md)** — it has step-by-step instructions and database queries to verify each feature.
-
-**Q: What's the haversine distance threshold?**
-A: 30 meters by default (adjustable in `CLUSTERING_DISTANCE_THRESHOLD` in `.env`).
-
-**Q: How many reports can one incident have?**
-A: Unlimited. `incidents.report_count` increments each time a new report is merged.
-
----
-
-## 🎉 Ready to Go?
-
-1. **First time?** → **[QUICKSTART.md](./QUICKSTART.md)**
-2. **Want to demo?** → **[JUDGE_TEST_FLOW.md](./JUDGE_TEST_FLOW.md)**
-3. **Building on it?** → **[ARCHITECTURE.md](./ARCHITECTURE.md)**
-
-**Questions? Check the individual module READMEs in `backend/` and `frontend/`.**
-
----
-
-**Made with ❤️ for the hackathon. Deployed with 🚀.**
+MIT — hackathon submission.

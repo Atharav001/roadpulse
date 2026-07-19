@@ -1,10 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authAPI, isAuthenticated, setAuthToken, setCurrentUser } from '../api/client';
+import { useI18n } from '../i18n';
 import Logo from '../components/Logo';
 
 const GIS_SCRIPT = 'https://accounts.google.com/gsi/client';
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.5-5.2l-6.2-5.2C29.3 35.3 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.5 5.5-6.5 6.6l6.2 5.2C38.9 37.2 44 31.5 44 24c0-1.2-.1-2.3-.4-3.5z" />
+    </svg>
+  );
+}
 
 function loadGoogleIdentity() {
   if (window.google?.accounts?.id) return Promise.resolve();
@@ -28,6 +39,7 @@ function loadGoogleIdentity() {
 export default function Login({ mode = 'login' }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useI18n();
   const isSignup = mode === 'signup' || location.pathname === '/signup';
   const redirectTo = location.state?.from || '/';
   const googleBtnRef = useRef(null);
@@ -38,7 +50,11 @@ export default function Login({ mode = 'login' }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(
+    () => import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+  );
   const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(true);
 
   useEffect(() => {
     setTab(isSignup ? 'signup' : 'login');
@@ -47,6 +63,24 @@ export default function Login({ mode = 'login' }) {
   useEffect(() => {
     if (isAuthenticated()) navigate(redirectTo);
   }, [navigate, redirectTo]);
+
+  // Pull Client ID from Railway /auth/config so Vercel env is optional
+  useEffect(() => {
+    let cancelled = false;
+    authAPI
+      .config()
+      .then((cfg) => {
+        if (cancelled) return;
+        if (cfg?.google_client_id) setGoogleClientId(cfg.google_client_id);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setGoogleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const persist = (r) => {
     setAuthToken(r.token);
@@ -75,7 +109,7 @@ export default function Login({ mode = 'login' }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!GOOGLE_CLIENT_ID) {
+    if (!googleClientId) {
       setGoogleReady(false);
       return undefined;
     }
@@ -84,7 +118,7 @@ export default function Login({ mode = 'login' }) {
       .then(() => {
         if (cancelled || !googleBtnRef.current) return;
         window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
+          client_id: googleClientId,
           callback: onGoogleCredential,
           auto_select: false,
           cancel_on_tap_outside: true,
@@ -112,7 +146,7 @@ export default function Login({ mode = 'login' }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, googleClientId]);
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
@@ -133,7 +167,6 @@ export default function Login({ mode = 'login' }) {
     }
   };
 
-  /** One-click demo: fills credentials and logs in immediately */
   const quickDemo = async (which) => {
     setError('');
     setLoading(true);
@@ -145,10 +178,7 @@ export default function Login({ mode = 'login' }) {
     try {
       persist(await authAPI.login(demoEmail, demoPassword));
     } catch (err) {
-      setError(
-        err.message ||
-          'Demo login failed. Ensure the backend is running (port 5001) and the database is seeded.'
-      );
+      setError(err.message || 'Demo login failed.');
     } finally {
       setLoading(false);
     }
@@ -159,15 +189,12 @@ export default function Login({ mode = 'login' }) {
       <div className="auth-shell animate-in">
         <aside className="auth-aside">
           <Logo size={32} />
-          <h1 style={{ marginTop: 20 }}>Report once. Track clearly.</h1>
-          <p>
-            Citizens file geotagged complaints. AI classifies and merges duplicates.
-            Wards stay accountable on a public dashboard.
-          </p>
+          <h1 style={{ marginTop: 20 }}>{t('auth_aside_title')}</h1>
+          <p>{t('auth_aside_sub')}</p>
           <ul className="auth-bullets">
-            <li>Live camera + GPS capture</li>
-            <li>Landmark-precise location</li>
-            <li>Department routing + email draft</li>
+            <li>{t('auth_b1')}</li>
+            <li>{t('auth_b2')}</li>
+            <li>{t('auth_b3')}</li>
           </ul>
         </aside>
 
@@ -178,35 +205,50 @@ export default function Login({ mode = 'login' }) {
               className={tab === 'login' ? 'active' : ''}
               onClick={() => { setTab('login'); setError(''); navigate('/login', { replace: true, state: location.state }); }}
             >
-              Sign in
+              {t('auth_tab_in')}
             </button>
             <button
               type="button"
               className={tab === 'signup' ? 'active' : ''}
               onClick={() => { setTab('signup'); setError(''); navigate('/signup', { replace: true, state: location.state }); }}
             >
-              Create account
+              {t('auth_tab_up')}
             </button>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}
 
-          {GOOGLE_CLIENT_ID ? (
-            <div className="google-signin-wrap" style={{ marginBottom: 16 }}>
-              <div ref={googleBtnRef} className="google-btn-host" />
-              {!googleReady && (
-                <p className="text-small text-muted" style={{ marginTop: 8 }}>
-                  Loading Google Sign-In…
-                </p>
-              )}
-            </div>
-          ) : null}
+          {/* Always show Google option */}
+          <div className="google-signin-wrap" style={{ marginBottom: 16 }}>
+            {googleClientId ? (
+              <>
+                <div ref={googleBtnRef} className="google-btn-host" />
+                {!googleReady && (
+                  <p className="text-small text-muted" style={{ marginTop: 8 }}>
+                    {t('auth_google_loading')}
+                  </p>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-google btn-block"
+                disabled={loading || googleLoading}
+                onClick={() => setError(t('auth_google_need_config'))}
+              >
+                <GoogleIcon />
+                {t('auth_google')}
+              </button>
+            )}
+          </div>
 
-          <div className="auth-divider"><span>{GOOGLE_CLIENT_ID ? 'or use email' : 'Sign in with email'}</span></div>
+          <div className="auth-divider">
+            <span>{googleClientId ? t('auth_or_email') : t('auth_email_only')}</span>
+          </div>
 
           <form onSubmit={handleEmailAuth}>
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('auth_email')}</label>
               <input
                 id="email"
                 type="email"
@@ -218,7 +260,7 @@ export default function Login({ mode = 'login' }) {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t('auth_password')}</label>
               <input
                 id="password"
                 type="password"
@@ -231,7 +273,7 @@ export default function Login({ mode = 'login' }) {
             </div>
             {tab === 'signup' && (
               <div className="form-group">
-                <label htmlFor="confirm">Confirm password</label>
+                <label htmlFor="confirm">{t('auth_confirm')}</label>
                 <input
                   id="confirm"
                   type="password"
@@ -243,24 +285,23 @@ export default function Login({ mode = 'login' }) {
               </div>
             )}
             <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-              {loading ? 'Please wait…' : tab === 'signup' ? 'Create citizen account' : 'Sign in'}
+              {loading ? t('auth_wait') : tab === 'signup' ? t('auth_submit_up') : t('auth_submit_in')}
             </button>
           </form>
 
           <div className="demo-row">
-            <span>Quick demo</span>
+            <span>{t('auth_demo')}</span>
             <button type="button" disabled={loading} onClick={() => quickDemo('citizen')}>
-              Citizen
+              {t('auth_citizen')}
             </button>
             <button type="button" disabled={loading} onClick={() => quickDemo('authority')}>
-              Authority
+              {t('auth_authority')}
             </button>
           </div>
 
           <p className="auth-foot text-small text-muted">
-            By continuing you can file reports and view the public dashboard.
-            {' '}
-            <Link to="/dashboard">Browse without signing in</Link>
+            {t('auth_foot')}{' '}
+            <Link to="/dashboard">{t('auth_browse')}</Link>
           </p>
         </div>
       </div>

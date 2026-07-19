@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import IncidentCard from '../components/IncidentCard';
 import { useLocation } from '../LocationContext';
 import { incidentsAPI } from '../api/client';
+import { useI18n } from '../i18n';
 
 export default function Community() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { location, requestLocation, error: locError, hasLocation, status } = useLocation();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,21 +47,21 @@ export default function Community() {
     <div className="container page animate-in">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Around you</p>
-          <h1>Community issues</h1>
+          <p className="eyebrow">{t('comm_eyebrow')}</p>
+          <h1>{t('comm_title')}</h1>
           <p className="text-small text-muted" style={{ margin: 0 }}>
-            Open reports near your location. Similar spots (~15m) are merged into one incident.
+            {t('comm_sub')}
           </p>
         </div>
         <button type="button" className="btn btn-accent" onClick={() => navigate('/report')}>
-          Report nearby
+          {t('comm_report')}
         </button>
       </div>
 
       <div className="panel" style={{ marginBottom: 16 }}>
         <div className="flex justify-between items-center gap-2" style={{ flexWrap: 'wrap' }}>
           <div>
-            <div className="stat-label">Your location</div>
+            <div className="stat-label">{t('comm_your_loc')}</div>
             {hasLocation ? (
               <p className="font-semibold text-small" style={{ margin: 0 }}>
                 {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
@@ -67,7 +69,7 @@ export default function Community() {
                 {status === 'cached' ? ' · last saved' : ''}
               </p>
             ) : (
-              <p className="text-small text-muted" style={{ margin: 0 }}>Location needed to show nearby issues</p>
+              <p className="text-small text-muted" style={{ margin: 0 }}>{t('comm_need_loc')}</p>
             )}
           </div>
           <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
@@ -86,7 +88,7 @@ export default function Community() {
               className="btn btn-secondary btn-small"
               onClick={() => requestLocation({ force: true }).then(loadNearby).catch(() => {})}
             >
-              Refresh GPS
+              {t('comm_refresh')}
             </button>
           </div>
         </div>
@@ -95,10 +97,10 @@ export default function Community() {
 
       {!hasLocation && (
         <div className="empty-state">
-          <h3>Enable location to view your area</h3>
-          <p className="text-muted">Community issues are filtered by where you are.</p>
+          <h3>{t('comm_enable_title')}</h3>
+          <p className="text-muted">{t('comm_enable_sub')}</p>
           <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => requestLocation({ force: true })}>
-            Allow location
+            {t('comm_allow')}
           </button>
         </div>
       )}
@@ -111,28 +113,18 @@ export default function Community() {
 
       {hasLocation && !loading && incidents.length === 0 && (
         <div className="empty-state">
-          <h3>No open issues nearby</h3>
-          <p className="text-muted">Be the first to report a problem in this area.</p>
+          <h3>{t('comm_none_title')}</h3>
+          <p className="text-muted">{t('comm_none_sub')}</p>
           <button type="button" className="btn btn-accent" style={{ marginTop: 16 }} onClick={() => navigate('/report')}>
-            Report an issue
+            {t('comm_none_cta')}
           </button>
         </div>
       )}
 
       {hasLocation && !loading && incidents.length > 0 && (
-        <div className="panel">
-          <p className="text-small text-muted" style={{ marginBottom: 8 }}>
-            {incidents.length} open issue{incidents.length !== 1 ? 's' : ''} within {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`}
-          </p>
-          {incidents.map((i) => (
-            <div key={i.id}>
-              <IncidentCard incident={i} />
-              {i.distance_m != null && (
-                <p className="text-small text-muted" style={{ margin: '-8px 0 12px' }}>
-                  ~{Math.round(i.distance_m)} m away · {i.report_count || 1} reporter{(i.report_count || 1) !== 1 ? 's' : ''}
-                </p>
-              )}
-            </div>
+        <div className="incident-list">
+          {incidents.map((incident) => (
+            <IncidentCard key={incident.id} incident={incident} />
           ))}
         </div>
       )}

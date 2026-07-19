@@ -1,34 +1,37 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
+import { useI18n } from '../i18n';
 
 export default function Footer() {
+  const { t } = useI18n();
+
   return (
     <footer className="site-footer">
       <div className="container footer-grid">
         <div>
           <Logo size={28} />
           <p className="text-small text-muted" style={{ margin: '12px 0 0', maxWidth: 300 }}>
-            Transparent road accountability — report, route, and resolve with public visibility.
+            {t('footer_tagline')}
           </p>
         </div>
         <div>
-          <div className="footer-heading">Platform</div>
-          <Link to="/report">Report an issue</Link>
-          <Link to="/community">Community nearby</Link>
-          <Link to="/my-reports">My reports</Link>
-          <Link to="/dashboard">Public dashboard</Link>
+          <div className="footer-heading">{t('footer_platform')}</div>
+          <Link to="/report">{t('footer_report')}</Link>
+          <Link to="/community">{t('footer_community')}</Link>
+          <Link to="/my-reports">{t('footer_my_reports')}</Link>
+          <Link to="/dashboard">{t('footer_dashboard')}</Link>
         </div>
         <div>
-          <div className="footer-heading">Access</div>
-          <Link to="/login">Sign in</Link>
-          <Link to="/signup">Create account</Link>
-          <Link to="/authority">Authority portal</Link>
+          <div className="footer-heading">{t('footer_access')}</div>
+          <Link to="/login">{t('footer_login')}</Link>
+          <Link to="/signup">{t('footer_signup')}</Link>
+          <Link to="/authority">{t('footer_authority')}</Link>
         </div>
       </div>
       <div className="container footer-bottom">
-        <span>© {new Date().getFullYear()} RoadPulse Civic Platform</span>
-        <span>Open transparency · Ward performance visible to all</span>
+        <span>© {new Date().getFullYear()} RoadPulse {t('footer_copy')}</span>
+        <span>{t('footer_open')}</span>
       </div>
     </footer>
   );

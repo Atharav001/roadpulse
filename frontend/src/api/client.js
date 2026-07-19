@@ -49,6 +49,8 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export const authAPI = {
+  config: () => fetchAPI('/auth/config', { method: 'GET' }),
+
   login: (email, password) =>
     fetchAPI('/auth/login', {
       method: 'POST',

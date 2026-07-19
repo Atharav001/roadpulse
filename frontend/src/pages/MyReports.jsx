@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import IncidentCard from '../components/IncidentCard';
 import { getCurrentUser, reportsAPI } from '../api/client';
+import { useI18n } from '../i18n';
 
 export default function MyReports() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const user = getCurrentUser();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +40,12 @@ export default function MyReports() {
     <div className="container page animate-in">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Citizen</p>
-          <h1>My reports</h1>
-          <p className="text-small text-muted" style={{ margin: 0 }}>Track every complaint you filed.</p>
+          <p className="eyebrow">{t('auth_citizen')}</p>
+          <h1>{t('my_reports_title')}</h1>
+          <p className="text-small text-muted" style={{ margin: 0 }}>{t('report_sub')}</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => navigate('/report')}>
-          New report
+          {t('home_cta_report')}
         </button>
       </div>
 
@@ -64,10 +66,9 @@ export default function MyReports() {
 
       {!loading && reports.length === 0 && (
         <div className="empty-state">
-          <h3>No reports yet</h3>
-          <p className="text-muted">Submit your first report to track status here.</p>
+          <h3>{t('my_reports_empty')}</h3>
           <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/report')}>
-            Report an issue
+            {t('home_cta_report')}
           </button>
         </div>
       )}

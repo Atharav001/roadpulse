@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, incidentsAPI } from '../api/client';
+import { useI18n } from '../i18n';
 
 const DEPT_NAMES = {
   'municipal-roads': 'Municipal Road Dept',
@@ -10,6 +11,7 @@ const DEPT_NAMES = {
 
 export default function AuthorityQueue() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const user = getCurrentUser();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,10 +68,10 @@ export default function AuthorityQueue() {
     <div className="container page animate-in">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Authority</p>
-          <h1>Department queue</h1>
+          <p className="eyebrow">{t('auth_authority')}</p>
+          <h1>{t('authority_title')}</h1>
           <p className="text-small text-muted" style={{ margin: 0 }}>
-            {user.email} · {DEPT_NAMES[user.department] || user.department || 'All departments'}
+            {user.email} · {DEPT_NAMES[user.department] || user.department || t('authority_sub')}
           </p>
         </div>
         <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: 'auto', minWidth: 160 }}>

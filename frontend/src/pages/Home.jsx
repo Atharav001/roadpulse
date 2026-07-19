@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardAPI, getCurrentUser } from '../api/client';
+import { useI18n } from '../i18n';
 import {
   IconArrowRight,
   IconCamera,
@@ -14,35 +15,9 @@ import {
   IconSpark,
 } from '../components/Icons';
 
-const STEPS = [
-  {
-    icon: IconMapPin,
-    title: 'Confirm GPS first',
-    desc: 'Location is required before the camera opens — no gallery spoofing.',
-  },
-  {
-    icon: IconCamera,
-    title: '2–4 live stamped photos',
-    desc: 'Each shutter locks GPS + time onto the image. AI grades and merges nearby reports.',
-  },
-  {
-    icon: IconChart,
-    title: 'Track & community',
-    desc: 'Follow your reports, browse nearby issues, and watch ward resolution publicly.',
-  },
-];
-
-const FEATURES = [
-  { icon: IconShield, title: 'Live-only capture', desc: 'Gallery and AI images blocked. GPS stamped at shutter for credibility.' },
-  { icon: IconMerge, title: 'Duplicate merging', desc: 'Same issue type within ~15m merges — all reporters and photos kept.' },
-  { icon: IconMapPin, title: 'Location-first', desc: 'Last GPS saved if you go offline; community filters by your area.' },
-  { icon: IconMail, title: 'Complaint email draft', desc: 'Formal email ready for the assigned department.' },
-  { icon: IconLayers, title: 'Community nearby', desc: 'See open issues around you with distance and reporter counts.' },
-  { icon: IconCheck, title: 'Authority resolve', desc: 'Department queue updates feed the public dashboard numbers.' },
-];
-
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const user = getCurrentUser();
   const [metrics, setMetrics] = useState(null);
 
@@ -58,6 +33,21 @@ export default function Home() {
     navigate(path);
   };
 
+  const steps = [
+    { icon: IconMapPin, title: t('home_step1_t'), desc: t('home_step1_d') },
+    { icon: IconCamera, title: t('home_step2_t'), desc: t('home_step2_d') },
+    { icon: IconChart, title: t('home_step3_t'), desc: t('home_step3_d') },
+  ];
+
+  const features = [
+    { icon: IconShield, title: t('home_f1_t'), desc: t('home_f1_d') },
+    { icon: IconMerge, title: t('home_f2_t'), desc: t('home_f2_d') },
+    { icon: IconMapPin, title: t('home_f3_t'), desc: t('home_f3_d') },
+    { icon: IconMail, title: t('home_f4_t'), desc: t('home_f4_d') },
+    { icon: IconLayers, title: t('home_f5_t'), desc: t('home_f5_d') },
+    { icon: IconCheck, title: t('home_f6_t'), desc: t('home_f6_d') },
+  ];
+
   return (
     <div className="home">
       <section className="hero-band grid-bg animate-in">
@@ -65,43 +55,40 @@ export default function Home() {
           <div className="hero-copy">
             <div className="pill-badge">
               <IconSpark />
-              Civic accountability platform
+              {t('home_badge')}
             </div>
             <h1 className="hero-title">
-              Report road damage.
-              <em> See it get fixed.</em>
+              {t('home_hero_1')}
+              <em> {t('home_hero_2')}</em>
             </h1>
-            <p className="hero-sub">
-              RoadPulse is the layer after capture — AI severity, real duplicate merging,
-              landmark-precise location, and a public dashboard that makes response time visible.
-            </p>
+            <p className="hero-sub">{t('home_sub')}</p>
             <div className="hero-cta">
               <button type="button" className="btn btn-accent btn-lg" onClick={() => go('/report')}>
-                Report an issue <IconArrowRight />
+                {t('home_cta_report')} <IconArrowRight />
               </button>
               <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
-                Open dashboard
+                {t('home_cta_dash')}
               </button>
             </div>
           </div>
 
           <div className="hero-panel glass-panel">
-            <div className="hero-panel-label">Live city pulse</div>
+            <div className="hero-panel-label">{t('home_pulse')}</div>
             <div className="metric-grid">
               <div>
-                <span>Open issues</span>
+                <span>{t('home_open')}</span>
                 <strong>{metrics?.open_count ?? '—'}</strong>
               </div>
               <div>
-                <span>Resolved</span>
+                <span>{t('home_resolved')}</span>
                 <strong>{metrics?.resolved_count ?? '—'}</strong>
               </div>
               <div>
-                <span>Resolution rate</span>
+                <span>{t('home_rate')}</span>
                 <strong>{metrics ? `${metrics.resolution_rate_percent}%` : '—'}</strong>
               </div>
               <div>
-                <span>Total tracked</span>
+                <span>{t('home_total')}</span>
                 <strong>{metrics?.total_incidents ?? '—'}</strong>
               </div>
             </div>
@@ -122,11 +109,11 @@ export default function Home() {
 
       <section className="container section-block animate-in delay-1">
         <div className="section-head center">
-          <p className="eyebrow">How it works</p>
-          <h2>Three steps. Full transparency.</h2>
+          <p className="eyebrow">{t('home_how')}</p>
+          <h2>{t('home_how_title')}</h2>
         </div>
         <div className="steps-row">
-          {STEPS.map((s, i) => {
+          {steps.map((s, i) => {
             const Icon = s.icon;
             return (
               <article key={s.title} className="step-card">
@@ -142,11 +129,11 @@ export default function Home() {
 
       <section className="container section-block animate-in delay-2">
         <div className="section-head">
-          <p className="eyebrow">Capabilities</p>
-          <h2>Built for accountability, not just intake</h2>
+          <p className="eyebrow">{t('home_cap')}</p>
+          <h2>{t('home_cap_title')}</h2>
         </div>
         <div className="feature-grid">
-          {FEATURES.map((f) => {
+          {features.map((f) => {
             const Icon = f.icon;
             return (
               <article key={f.title} className="feature-tile">
@@ -162,15 +149,15 @@ export default function Home() {
       <section className="container section-block animate-in delay-3">
         <div className="cta-band glass-panel">
           <div>
-            <h2>Public ward performance, always on</h2>
-            <p>Resolution rates, pending queues, and escalated issues — visible without a login.</p>
+            <h2>{t('home_cta_title')}</h2>
+            <p>{t('home_cta_sub')}</p>
           </div>
           <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
-              Dashboard <IconArrowRight />
+              {t('nav_dashboard')} <IconArrowRight />
             </button>
             <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate('/community')}>
-              Community nearby
+              {t('home_cta_community')}
             </button>
           </div>
         </div>
