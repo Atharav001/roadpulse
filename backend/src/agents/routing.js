@@ -3,7 +3,7 @@ const routingMap = {
   waterlogging: 'drainage-dept',
   accident: 'traffic-police',
   signal_failure: 'traffic-police',
-  blocked_road: 'traffic-police',
+  blocked_road: 'municipal-roads',
 };
 
 function routeDepartment(issue_type) {
