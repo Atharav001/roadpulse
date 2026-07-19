@@ -55,6 +55,12 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify({ email, password, role }),
     }),
+
+  googleLogin: ({ email, name, google_id }) =>
+    fetchAPI('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ email, name, google_id }),
+    }),
 };
 
 export const reportsAPI = {

@@ -115,6 +115,47 @@ function createAuthRouter(pool) {
     }
   });
 
+  // Google sign-in (hackathon-friendly): create or login citizen by Google email
+  router.post('/google', async (req, res) => {
+    try {
+      const { email, name, google_id } = req.body;
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({ error: 'A valid Google email is required' });
+      }
+
+      const normalized = email.trim().toLowerCase();
+      const findResult = await pool.query(
+        'SELECT id, email, role, department FROM users WHERE email = $1',
+        [normalized]
+      );
+
+      let user;
+      if (findResult.rows.length > 0) {
+        user = findResult.rows[0];
+      } else {
+        const passwordHash = hashPassword(`google:${google_id || normalized}:${Date.now()}`);
+        const createResult = await pool.query(
+          'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role, department',
+          [normalized, passwordHash, 'citizen']
+        );
+        user = createResult.rows[0];
+      }
+
+      return res.status(200).json({
+        user_id: user.id,
+        email: user.email,
+        role: user.role,
+        department: user.department || null,
+        name: name || null,
+        provider: 'google',
+        token: generateJWT({ user_id: user.id, role: user.role, department: user.department }),
+      });
+    } catch (error) {
+      console.error('Error in google login:', error.message);
+      return res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+  });
+
   return router;
 }
 

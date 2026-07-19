@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './ThemeContext';
 import Navigation from './components/Navigation';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import ReportForm from './pages/ReportForm';
@@ -15,7 +16,7 @@ function ProtectedRoute({ children, requiredRole = null }) {
   const user = getCurrentUser();
 
   if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: window.location.pathname }} />;
   }
 
   if (requiredRole && user && user.role !== requiredRole) {
@@ -29,49 +30,35 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
     const user = localStorage.getItem('current_user');
-    if (token && !user) {
-      localStorage.removeItem('jwt_token');
-    }
+    if (token && !user) localStorage.removeItem('jwt_token');
   }, []);
 
   return (
     <ThemeProvider>
       <Router>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div className="app-shell">
           <Navigation />
-          <main style={{ flex: 1 }}>
+          <main className="app-main">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Login mode="login" />} />
+              <Route path="/signup" element={<Login mode="signup" />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/incident/:id" element={<IncidentDetail />} />
-              <Route
-                path="/report"
-                element={
-                  <ProtectedRoute>
-                    <ReportForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-reports"
-                element={
-                  <ProtectedRoute>
-                    <MyReports />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/report" element={<ProtectedRoute><ReportForm /></ProtectedRoute>} />
+              <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
               <Route
                 path="/authority"
-                element={
+                element={(
                   <ProtectedRoute requiredRole="authority">
                     <AuthorityQueue />
                   </ProtectedRoute>
-                }
+                )}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
+          <Footer />
         </div>
       </Router>
     </ThemeProvider>

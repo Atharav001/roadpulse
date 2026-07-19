@@ -106,10 +106,12 @@ export default function ReportForm() {
   }
 
   return (
-    <div className="container page" style={{ maxWidth: 640 }}>
-      <div className="page-kicker">Citizen report</div>
+    <div className="container page animate-in" style={{ maxWidth: 640 }}>
+      <p className="eyebrow">Citizen report</p>
       <h1>Report a road issue</h1>
-      <p className="text-muted text-small">Camera → confirm location → submit. AI classifies, merges duplicates, and drafts a complaint email.</p>
+      <p className="text-muted text-small" style={{ marginBottom: 20 }}>
+        Three steps: capture → confirm location → submit.
+      </p>
 
       <div className="stepper">
         <div className={`step-dot ${step > 1 ? 'done' : ''} ${step === 1 ? 'active' : ''}`} />

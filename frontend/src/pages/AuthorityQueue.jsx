@@ -63,10 +63,10 @@ export default function AuthorityQueue() {
   if (!user || user.role !== 'authority') return null;
 
   return (
-    <div className="container page">
+    <div className="container page animate-in">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Authority</div>
+          <p className="eyebrow">Authority</p>
           <h1>Department queue</h1>
           <p className="text-small text-muted" style={{ margin: 0 }}>
             {user.email} · {DEPT_NAMES[user.department] || user.department || 'All departments'}

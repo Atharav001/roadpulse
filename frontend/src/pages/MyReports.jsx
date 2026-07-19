@@ -35,11 +35,12 @@ export default function MyReports() {
   if (!user) return null;
 
   return (
-    <div className="container page">
+    <div className="container page animate-in">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Citizen</div>
+          <p className="eyebrow">Citizen</p>
           <h1>My reports</h1>
+          <p className="text-small text-muted" style={{ margin: 0 }}>Track every complaint you filed.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => navigate('/report')}>
           New report
