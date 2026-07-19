@@ -44,6 +44,12 @@ export const authAPI = {
       body: JSON.stringify({ email, password }),
     }),
 
+  deviceLogin: (deviceId) =>
+    fetchAPI('/auth/device-login', {
+      method: 'POST',
+      body: JSON.stringify({ device_id: deviceId }),
+    }),
+
   register: (email, password, role = 'citizen') =>
     fetchAPI('/auth/register', {
       method: 'POST',

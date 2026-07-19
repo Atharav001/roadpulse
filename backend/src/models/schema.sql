@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS wards (
 CREATE TABLE IF NOT EXISTS departments (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  issue_types_handled TEXT[] DEFAULT '{}',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -34,6 +35,8 @@ CREATE TABLE IF NOT EXISTS reports (
   issue_type VARCHAR(100),
   severity VARCHAR(50) CHECK (severity IN ('low', 'medium', 'high', 'critical')),
   landmark_description TEXT,
+  raw_classification_result JSONB,
+  nearby_landmarks JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

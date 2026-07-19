@@ -94,17 +94,28 @@ function createReportsRouter(pool) {
       try {
         classification = await classify(photoData.map(p => p.url), text);
         await pool.query(
-          'UPDATE reports SET issue_type = $1, severity = $2 WHERE id = $3',
-          [classification.issue_type, normalizeSeverity(classification.severity), reportId]
+          'UPDATE reports SET issue_type = $1, severity = $2, raw_classification_result = $3 WHERE id = $4',
+          [
+            classification.issue_type,
+            normalizeSeverity(classification.severity),
+            classification.raw_result ? JSON.stringify({ raw_text: classification.raw_result }) : null,
+            reportId
+          ]
         );
       } catch (error) {
         console.error('Classification agent failed:', error.message);
       }
 
       // Step 3: Get landmark
-      let landmark = { landmark_description: 'Unknown location', ward_id: ward_id || 'unknown' };
+      let landmark = { landmark_description: 'Unknown location', ward_id: ward_id || 'unknown', nearby_landmarks: [] };
       try {
         landmark = await getLandmark(lat, lng, ward_id);
+        if (landmark.nearby_landmarks && landmark.nearby_landmarks.length > 0) {
+          await pool.query(
+            'UPDATE reports SET nearby_landmarks = $1 WHERE id = $2',
+            [JSON.stringify(landmark.nearby_landmarks), reportId]
+          );
+        }
       } catch (error) {
         console.error('Landmark agent failed:', error.message);
       }
@@ -119,6 +130,10 @@ function createReportsRouter(pool) {
 
       // Step 5: Cluster or create incident
       let incidentId;
+      let draftEmailResult = {
+        subject: `Road Issue Report: ${classification.issue_type}`,
+        body: 'Thank you for your report. Our team will review and take action.',
+      };
       try {
         const clusterResult = await clusterOrCreate(
           {
@@ -135,28 +150,54 @@ function createReportsRouter(pool) {
           pool
         );
         incidentId = clusterResult.incident_id;
+
+        // Step 5b: Generate and store email draft on the incident
+        try {
+          const emailDraft = await draftEmail(
+            {
+              issue_type: classification.issue_type,
+              severity: classification.severity,
+              landmark_description: landmark_description || landmark.landmark_description,
+              department: department,
+            },
+            user_id
+          );
+          await pool.query(
+            `UPDATE incidents SET draft_email_subject = $1, draft_email_body = $2 WHERE id = $3`,
+            [emailDraft.subject, emailDraft.body, incidentId]
+          );
+          draftEmailResult = emailDraft;
+        } catch (error) {
+          console.error('Email draft agent failed:', error.message);
+        }
+
+        // Step 5c: Transition status to 'routed' after successful clustering+routing
+        if (department && department !== 'unknown') {
+          await pool.query(
+            `UPDATE incidents SET status = 'routed', updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = 'reported'`,
+            [incidentId]
+          );
+        }
       } catch (error) {
         console.error('Clustering agent failed:', error.message);
         incidentId = null;
       }
 
-      // Step 6: Draft email
-      let draftEmailResult = {
-        subject: `Road Issue Report: ${classification.issue_type}`,
-        body: 'Thank you for your report. Our team will review and take action.',
-      };
-      try {
-        draftEmailResult = await draftEmail(
-          {
-            issue_type: classification.issue_type,
-            severity: classification.severity,
-            landmark_description: landmark_description || landmark.landmark_description,
-            department: department,
-          },
-          user_id
-        );
-      } catch (error) {
-        console.error('Email draft agent failed:', error.message);
+      // Step 6: Draft email (fallback if clustering failed)
+      if (!incidentId) {
+        try {
+          draftEmailResult = await draftEmail(
+            {
+              issue_type: classification.issue_type,
+              severity: classification.severity,
+              landmark_description: landmark_description || landmark.landmark_description,
+              department: department,
+            },
+            user_id
+          );
+        } catch (error) {
+          console.error('Email draft agent failed:', error.message);
+        }
       }
 
       return res.status(201).json({
@@ -186,7 +227,8 @@ function createReportsRouter(pool) {
 
       const query = `
         SELECT r.id, r.issue_type, r.severity, r.latitude, r.longitude,
-               r.landmark_description, r.created_at, r.text,
+               r.landmark_description, r.raw_classification_result,
+               r.nearby_landmarks, r.created_at, r.text,
                i.status, i.id as incident_id
         FROM reports r
         LEFT JOIN incident_reports ir ON r.id = ir.report_id
@@ -213,7 +255,8 @@ function createReportsRouter(pool) {
       const { id } = req.params;
       const query = `
         SELECT id, user_id, photos, latitude, longitude, text,
-               issue_type, severity, landmark_description, created_at
+               issue_type, severity, landmark_description,
+               raw_classification_result, nearby_landmarks, created_at
         FROM reports WHERE id = $1
       `;
       const result = await pool.query(query, [id]);

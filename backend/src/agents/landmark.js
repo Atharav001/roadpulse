@@ -37,7 +37,7 @@ function getFallbackDescription(latitude, longitude, ward_id) {
 
 async function getLandmark(latitude, longitude, ward_id) {
   if (latitude == null || longitude == null) {
-    return { landmark_description: 'Unknown location', ward_id: ward_id || 'unknown' };
+    return { landmark_description: 'Unknown location', ward_id: ward_id || 'unknown', nearby_landmarks: [] };
   }
 
   const resolvedWard = ward_id || inferWard(latitude, longitude);
@@ -46,23 +46,26 @@ async function getLandmark(latitude, longitude, ward_id) {
     distanceMeters(c.lat, c.lng, latitude, longitude) <= CACHE_THRESHOLD_M
   );
   if (cached) {
-    return { landmark_description: cached.description, ward_id: resolvedWard };
+    return { landmark_description: cached.description, ward_id: resolvedWard, nearby_landmarks: cached.rawPlaces || [] };
   }
 
   try {
     let description;
+    let rawPlaces = [];
     if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY.startsWith('demo_')) {
       description = getFallbackDescription(latitude, longitude, resolvedWard);
     } else {
-      description = await fetchLandmarkFromGooglePlaces(latitude, longitude);
+      const result = await fetchLandmarkFromGooglePlaces(latitude, longitude);
+      description = result.description;
+      rawPlaces = result.rawPlaces;
     }
 
-    landmarkCache.push({ lat: latitude, lng: longitude, description });
+    landmarkCache.push({ lat: latitude, lng: longitude, description, rawPlaces });
     if (landmarkCache.length > 100) landmarkCache.splice(0, 50);
-    return { landmark_description: description, ward_id: resolvedWard };
+    return { landmark_description: description, ward_id: resolvedWard, nearby_landmarks: rawPlaces };
   } catch (error) {
     console.error('Landmark lookup failed:', error.message);
-    return { landmark_description: `Location near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, ward_id: resolvedWard };
+    return { landmark_description: `Location near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, ward_id: resolvedWard, nearby_landmarks: [] };
   }
 }
 
@@ -80,13 +83,20 @@ async function fetchLandmarkFromGooglePlaces(latitude, longitude) {
   );
 
   if (response.data.status === 'ZERO_RESULTS') {
-    return `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    return { description: `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, rawPlaces: [] };
   }
   if (response.data.status !== 'OK') {
     throw new Error(`Google Places API error: ${response.data.status}`);
   }
 
   const places = response.data.results.slice(0, 3);
+  const rawPlaces = places.map(p => ({
+    name: p.name || '',
+    vicinity: p.vicinity || '',
+    place_id: p.place_id || '',
+    types: p.types || [],
+  }));
+
   const nameAndVicinity = places.map(p => {
     const name = p.name || '';
     const vicinity = p.vicinity || '';
@@ -94,7 +104,7 @@ async function fetchLandmarkFromGooglePlaces(latitude, longitude) {
   }).filter(Boolean);
 
   if (nameAndVicinity.length === 0) {
-    return `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    return { description: `Location at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, rawPlaces: [] };
   }
 
   const mainPlace = nameAndVicinity[0];
@@ -103,7 +113,7 @@ async function fetchLandmarkFromGooglePlaces(latitude, longitude) {
   if (nearbyPlaces.length > 0) {
     description += `, near ${nearbyPlaces.join(' & ')}`;
   }
-  return description;
+  return { description, rawPlaces };
 }
 
 module.exports = { getLandmark };

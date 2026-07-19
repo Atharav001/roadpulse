@@ -34,7 +34,8 @@ async function classify(photoUrls, text) {
   console.error('Classification failed after retries:', lastError?.message);
   return {
     issue_type: 'unclassified',
-    severity: 'unknown'
+    severity: 'unknown',
+    raw_result: null
   };
 }
 
@@ -87,7 +88,12 @@ async function callVisionModel(photoUrls, text) {
   );
 
   const responseText = response.data.candidates[0].content.parts[0].text;
-  return parseVisionResponse(responseText);
+  const parsed = parseVisionResponse(responseText);
+  return {
+    issue_type: parsed.issue_type,
+    severity: parsed.severity,
+    raw_result: responseText
+  };
 }
 
 /**

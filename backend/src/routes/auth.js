@@ -35,7 +35,7 @@ function createAuthRouter(pool) {
 
       // Query user by email
       const userQuery = `
-        SELECT id, email, password_hash, role
+        SELECT id, email, password_hash, role, department
         FROM users
         WHERE email = $1
       `;
@@ -68,6 +68,7 @@ function createAuthRouter(pool) {
         user_id: user.id,
         email: user.email,
         role: user.role,
+        department: user.department || null,
         token: token
       });
     } catch (error) {
@@ -134,6 +135,7 @@ function createAuthRouter(pool) {
         user_id: user.id,
         email: user.email,
         role: user.role,
+        department: user.department || null,
         token: token
       });
     } catch (error) {
@@ -141,6 +143,66 @@ function createAuthRouter(pool) {
       return res.status(500).json({
         error: 'Internal server error',
         message: error.message
+      });
+    }
+  });
+
+  /**
+   * POST /auth/device-login
+   * Citizen login via device_id — no password required.
+   * Creates user if device_id is new.
+   * Accept { device_id }
+   * Return { user_id, role: 'citizen', token }
+   */
+  router.post('/device-login', async (req, res) => {
+    try {
+      const { device_id } = req.body;
+
+      if (!device_id || typeof device_id !== 'string' || device_id.trim().length === 0) {
+        return res.status(400).json({ error: 'device_id is required' });
+      }
+
+      const trimmedId = device_id.trim();
+
+      // Try to find existing user with this device_id
+      const findQuery = 'SELECT id, email, role FROM users WHERE email = $1';
+      const findResult = await pool.query(findQuery, [trimmedId]);
+
+      let user;
+      if (findResult.rows.length > 0) {
+        user = findResult.rows[0];
+      } else {
+        // Create new citizen user with device_id as email
+        const createQuery = `
+          INSERT INTO users (email, password_hash, role)
+          VALUES ($1, $2, $3)
+          RETURNING id, email, role
+        `;
+        const createResult = await pool.query(createQuery, [
+          trimmedId,
+          'device-login-no-password',
+          'citizen',
+        ]);
+        user = createResult.rows[0];
+      }
+
+      const token = generateJWT({
+        user_id: user.id,
+        role: user.role,
+      });
+
+      return res.status(200).json({
+        user_id: user.id,
+        email: user.email,
+        role: user.role,
+        department: null,
+        token,
+      });
+    } catch (error) {
+      console.error('Error in device-login:', error.message);
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: error.message,
       });
     }
   });

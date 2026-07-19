@@ -137,7 +137,6 @@ export default function ReportForm() {
                 value={landmark}
                 onChange={(e) => setLandmark(e.target.value)}
                 placeholder="Auto-detected from GPS..."
-                style={{ borderColor: landmark && !landmarkLoading ? '#22c55e' : undefined }}
               />
               <p className="text-small text-muted">
                 Auto-detected from your location. Edit if needed.
@@ -208,9 +207,9 @@ export default function ReportForm() {
           {draftEmail && (
             <div style={{ marginBottom: '1.5rem' }}>
               <h3>Email Complaint (for your records)</h3>
-              <div style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '0.375rem', marginBottom: '1rem' }}>
-                <p><strong>Subject:</strong> {draftEmail.subject}</p>
-                <p style={{ whiteSpace: 'pre-wrap', marginTop: '1rem' }}>{draftEmail.body}</p>
+              <div style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: '0.75rem', marginBottom: '1rem', border: '1px solid var(--border)' }}>
+                <p className="font-bold" style={{ marginBottom: '0.5rem' }}>Subject: {draftEmail.subject}</p>
+                <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{draftEmail.body}</p>
               </div>
               <button type="button" className="btn btn-secondary btn-small" onClick={() => {
                 const text = `Subject: ${draftEmail.subject}\n\n${draftEmail.body}`;

@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const TEXT_MODEL_API_KEY = process.env.VISION_MODEL_API_KEY; // Reuse vision API key for text
-const GEMINI_TEXT_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_TEXT_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 // Department email addresses and contact info
 const DEPARTMENT_INFO = {
@@ -179,25 +179,22 @@ function generateFallbackEmail(issue_type, severity, landmark_description, depar
     high: 'critical'
   }[severity] || 'unspecified';
 
-  const subject = `Road Issue Report: ${issue_type} at ${landmark_description}`;
+  const subject = `[RoadPulse] ${issue_type.replace(/_/g, ' ')} - ${landmark_description}`;
 
   const body = `Dear ${departmentInfo.name},
 
-We are writing to report a road/traffic issue that requires your immediate attention.
+We are writing to bring to your attention a road/traffic issue reported by citizens through the RoadPulse platform.
 
-Issue Type: ${issue_type}
+Issue Type: ${issue_type.replace(/_/g, ' ')}
 Severity: ${severityLabel}
 Location: ${landmark_description}
 
-This issue has been reported through the RoadPulse citizen reporting system. We request immediate inspection and remediation to ensure public safety and infrastructure quality.
-
-For more details or to track this report, please reference your incident tracking system.
+This issue has been flagged for your department's action. We request inspection and remediation at the earliest to ensure public safety.
 
 Thank you for your prompt attention to this matter.
 
 Best regards,
 RoadPulse Reporting System
-On behalf of concerned citizens
 
 ---
 ${departmentInfo.address}`;

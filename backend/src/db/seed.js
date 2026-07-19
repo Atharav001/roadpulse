@@ -32,14 +32,19 @@ async function seed() {
     // Seed departments
     const departmentIds = ['traffic-police', 'municipal-roads', 'drainage-dept'];
     const departmentNames = ['Traffic Police', 'Municipal Road Dept', 'Drainage Dept'];
+    const departmentTypes = [
+      ['signal_failure', 'accident', 'blocked_road'],
+      ['pothole', 'blocked_road'],
+      ['waterlogging', 'pothole'],
+    ];
 
     for (let i = 0; i < departmentIds.length; i++) {
       await pool.query(
-        'INSERT INTO departments (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING',
-        [departmentIds[i], departmentNames[i]]
+        'INSERT INTO departments (id, name, issue_types_handled) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET issue_types_handled = $3',
+        [departmentIds[i], departmentNames[i], departmentTypes[i]]
       );
     }
-    console.log('✓ Seeded 3 departments');
+    console.log('✓ Seeded 3 departments with issue_types_handled');
 
     // Hash password for users (must match auth.js hashPassword function)
     const hashPassword = (password) => crypto.createHash('sha256').update(password + 'roadpulse-salt').digest('hex');
@@ -47,11 +52,11 @@ async function seed() {
     // Seed authority user
     const authorityPasswordHash = hashPassword('password123');
     const authorityResult = await pool.query(
-      'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING RETURNING id',
-      ['authority@roadpulse.local', authorityPasswordHash, 'authority']
+      'INSERT INTO users (email, password_hash, role, department) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO UPDATE SET department = $4 RETURNING id',
+      ['authority@roadpulse.local', authorityPasswordHash, 'authority', 'municipal-roads']
     );
     const authorityUserId = authorityResult.rows.length > 0 ? authorityResult.rows[0].id : null;
-    console.log('✓ Seeded authority user');
+    console.log('✓ Seeded authority user (department: municipal-roads)');
 
     // Seed citizen user
     const citizenPasswordHash = hashPassword('password123');
