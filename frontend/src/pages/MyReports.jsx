@@ -1,66 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import IncidentCard from '../components/IncidentCard';
-import { incidentsAPI, getCurrentUser } from '../api/client';
+import { getCurrentUser, reportsAPI } from '../api/client';
 
 export default function MyReports() {
   const navigate = useNavigate();
   const user = getCurrentUser();
-  const [incidents, setIncidents] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user) { navigate('/login'); return; }
+    if (!user?.user_id) {
+      navigate('/login');
+      return;
+    }
     fetchReports();
-  }, [user, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.user_id]);
 
   const fetchReports = async () => {
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     try {
-      const response = await incidentsAPI.list({});
-      setIncidents(response.incidents || []);
+      const response = await reportsAPI.getByUser(user.user_id);
+      setReports(response.reports || []);
     } catch (err) {
       setError(err.message || 'Failed to load reports');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user) return null;
 
   return (
-    <div className="container" style={{ padding: '1.5rem' }}>
-      <div className="flex justify-between items-center" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h1 style={{ margin: 0 }}>My Reports</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/report')}>
-          + New Report
+    <div className="container page">
+      <div className="page-header">
+        <div>
+          <div className="page-kicker">Citizen</div>
+          <h1>My reports</h1>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/report')}>
+          New report
         </button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-
-      {loading && (
-        <div className="flex flex-center" style={{ padding: '3rem' }}>
-          <div className="spinner"></div>
-        </div>
-      )}
-
-      {!loading && incidents.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-          <h3 style={{ marginBottom: '0.5rem' }}>No reports yet</h3>
-          <p className="text-muted">Submit your first report to track it here.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/report')} style={{ marginTop: '1rem' }}>
-            Report an Issue
+      {error && (
+        <div className="alert alert-error">
+          {error}
+          <button type="button" className="btn btn-secondary btn-small" style={{ marginLeft: 12 }} onClick={fetchReports}>
+            Retry
           </button>
         </div>
       )}
 
-      {!loading && incidents.length > 0 && (
-        <div>
-          <p className="text-small text-muted" style={{ marginBottom: '1rem' }}>
-            {incidents.length} report{incidents.length !== 1 ? 's' : ''}
+      {loading && (
+        <div className="flex flex-center" style={{ padding: 48 }}>
+          <div className="spinner" />
+        </div>
+      )}
+
+      {!loading && reports.length === 0 && (
+        <div className="empty-state">
+          <h3>No reports yet</h3>
+          <p className="text-muted">Submit your first report to track status here.</p>
+          <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/report')}>
+            Report an issue
+          </button>
+        </div>
+      )}
+
+      {!loading && reports.length > 0 && (
+        <div className="panel">
+          <p className="text-small text-muted" style={{ marginBottom: 8 }}>
+            {reports.length} submission{reports.length !== 1 ? 's' : ''}
           </p>
-          {incidents.map(i => <IncidentCard key={i.id} incident={i} />)}
+          {reports.map((r) => (
+            <IncidentCard
+              key={r.id}
+              incident={{
+                id: r.incident_id || r.id,
+                issue_type: r.issue_type,
+                severity: r.severity,
+                landmark_description: r.landmark_description,
+                status: r.status,
+                report_count: r.report_count,
+                first_reported_at: r.created_at,
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { incidentsAPI, getCurrentUser } from '../api/client';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getApiBaseUrl, getCurrentUser, incidentsAPI } from '../api/client';
 
 const DEPT_NAMES = {
   'municipal-roads': 'Municipal Road Dept',
@@ -9,18 +9,24 @@ const DEPT_NAMES = {
 };
 
 const VALID_STATUSES = ['reported', 'routed', 'in_progress', 'resolved'];
-const STATUS_COLORS = {
-  low: 'var(--success)', medium: 'var(--warning)', high: 'var(--danger)', critical: '#7c2d12',
-};
-
 const STATUS_BADGES = {
-  reported: 'badge-reported', routed: 'badge-routed',
-  in_progress: 'badge-in_progress', resolved: 'badge-resolved',
+  reported: 'badge-reported',
+  routed: 'badge-routed',
+  in_progress: 'badge-in_progress',
+  resolved: 'badge-resolved',
 };
 
 function formatDate(d) {
+  if (!d) return '—';
   const date = new Date(d);
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function resolvePhotoUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  if (url.startsWith('/uploads/')) return `${getApiBaseUrl()}${url}`;
+  return url;
 }
 
 export default function IncidentDetail() {
@@ -35,10 +41,13 @@ export default function IncidentDetail() {
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
 
-  useEffect(() => { fetchIncident(); }, [id]);
+  useEffect(() => {
+    fetchIncident();
+  }, [id]);
 
   const fetchIncident = async () => {
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     try {
       const r = await incidentsAPI.getById(id);
       setIncident(r);
@@ -47,12 +56,14 @@ export default function IncidentDetail() {
         setEmailBody(r.draft_email.body);
       }
     } catch (err) {
-      setError(err.message || 'Failed to load incident details');
-    } finally { setLoading(false); }
+      setError(err.message || 'Failed to load incident');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText('Subject: ' + emailSubject + '\n\n' + emailBody);
+    navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailBody}`);
     setEmailCopied(true);
     setTimeout(() => setEmailCopied(false), 2000);
   };
@@ -66,148 +77,168 @@ export default function IncidentDetail() {
     }
   };
 
-  if (loading) return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
-      <div className="flex flex-center" style={{ padding: '3rem' }}>
-        <div className="spinner"></div>
+  if (loading) {
+    return (
+      <div className="container page">
+        <div className="flex flex-center" style={{ padding: 48 }}>
+          <div className="spinner" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (error) return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
-      <div className="alert alert-error">{error}</div>
-      <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
-    </div>
-  );
+  if (error && !incident) {
+    return (
+      <div className="container page">
+        <div className="alert alert-error">{error}</div>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+          Back to dashboard
+        </button>
+      </div>
+    );
+  }
 
-  if (!incident) return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
-      <div className="alert alert-error">Incident not found</div>
-      <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
-    </div>
-  );
+  if (!incident) {
+    return (
+      <div className="container page">
+        <div className="empty-state">
+          <h3>Incident not found</h3>
+          <button type="button" className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => navigate('/dashboard')}>
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const canEditStatus = user && user.role === 'authority';
+  const canEditStatus = user?.role === 'authority';
   const currentIdx = VALID_STATUSES.indexOf(incident.status);
-  const nextStatus = currentIdx < VALID_STATUSES.length - 1 ? VALID_STATUSES[currentIdx + 1] : null;
+  const nextStatus = currentIdx >= 0 && currentIdx < VALID_STATUSES.length - 1 ? VALID_STATUSES[currentIdx + 1] : null;
 
   return (
-    <div className="container" style={{ padding: '1.5rem' }}>
-      <button className="btn btn-secondary btn-small" onClick={() => navigate(-1)} style={{ marginBottom: '1rem' }}>
-        &larr; Back
+    <div className="container page">
+      <button type="button" className="btn btn-secondary btn-small" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
+        Back
       </button>
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="flex justify-between items-start" style={{ marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: '0 0 0.25rem 0' }}>
-              {incident.issue_type?.replace(/_/g, ' ') || 'Unclassified'}
-              <span style={{ marginLeft: '0.75rem', fontSize: '1rem', color: STATUS_COLORS[incident.severity] || 'var(--text-muted)' }}>
-                ({incident.severity})
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="flex justify-between items-start gap-2" style={{ flexWrap: 'wrap', marginBottom: 16 }}>
+          <div>
+            <div className="page-kicker">Incident</div>
+            <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '1.5rem' }}>
+              {(incident.issue_type || 'unclassified').replace(/_/g, ' ')}
+              <span className={`severity-${incident.severity}`} style={{ marginLeft: 10, fontSize: '1rem' }}>
+                {incident.severity}
               </span>
-            </h2>
-            <p className="text-muted text-small" style={{ margin: 0 }}>{incident.landmark_description}</p>
+            </h1>
+            <p className="text-muted text-small" style={{ marginTop: 8 }}>
+              {incident.landmark_description}
+            </p>
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <span className={'badge ' + (STATUS_BADGES[incident.status] || 'badge-reported')}>
-              {incident.status?.replace(/_/g, ' ')}
+          <div style={{ textAlign: 'right' }}>
+            <span className={`badge ${STATUS_BADGES[incident.status] || 'badge-reported'}`}>
+              {(incident.status || '').replace(/_/g, ' ')}
             </span>
             {incident.is_escalated && (
-              <div className="badge" style={{ display: 'block', marginTop: '0.5rem', background: 'var(--danger-light)', color: 'var(--danger)' }}>
+              <div className="badge badge-escalated" style={{ display: 'block', marginTop: 8 }}>
                 Pending {incident.days_pending} days
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-2" style={{ marginBottom: '1.25rem', gap: '1rem' }}>
-          <div className="card card-static" style={{ padding: '0.75rem 1rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Reported</p>
-            <p className="font-bold" style={{ margin: 0, fontSize: '0.9rem' }}>{formatDate(incident.first_reported_at || incident.created_at)}</p>
+        <div className="grid grid-2" style={{ marginBottom: 16 }}>
+          <div className="panel-quiet">
+            <div className="stat-label">First reported</div>
+            <div className="font-semibold text-small">{formatDate(incident.first_reported_at)}</div>
           </div>
-          <div className="card card-static" style={{ padding: '0.75rem 1rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Department</p>
-            <p className="font-bold" style={{ margin: 0, fontSize: '0.9rem' }}>{DEPT_NAMES[incident.department] || incident.department || 'Unassigned'}</p>
+          <div className="panel-quiet">
+            <div className="stat-label">Department</div>
+            <div className="font-semibold text-small">
+              {DEPT_NAMES[incident.department] || incident.department || 'Unassigned'}
+            </div>
           </div>
-          <div className="card card-static" style={{ padding: '0.75rem 1rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Last Updated</p>
-            <p className="font-bold" style={{ margin: 0, fontSize: '0.9rem' }}>{formatDate(incident.updated_at)}</p>
+          <div className="panel-quiet">
+            <div className="stat-label">Ward</div>
+            <div className="font-semibold text-small">{incident.ward_id || 'unknown'}</div>
           </div>
-          <div className="card card-static" style={{ padding: '0.75rem 1rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Ward</p>
-            <p className="font-bold" style={{ margin: 0, fontSize: '0.9rem' }}>{incident.ward_id}</p>
+          <div className="panel-quiet">
+            <div className="stat-label">Merged reports</div>
+            <div className="font-semibold text-small">{incident.report_count || incident.linked_reports?.length || 1}</div>
           </div>
         </div>
 
         {canEditStatus && nextStatus && (
-          <button className="btn btn-primary" onClick={() => handleStatusUpdate(nextStatus)} style={{ width: '100%' }}>
-            Mark as {nextStatus.replace(/_/g, ' ')} &rarr;
+          <button type="button" className="btn btn-primary btn-block" onClick={() => handleStatusUpdate(nextStatus)}>
+            Mark as {nextStatus.replace(/_/g, ' ')}
           </button>
         )}
       </div>
 
-      {incident.linked_reports && incident.linked_reports.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Linked Reports ({incident.report_count || incident.linked_reports.length})</h3>
+      {incident.linked_reports?.length > 0 && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>Merged reports ({incident.linked_reports.length})</h3>
           {incident.linked_reports.map((report, i) => (
-            <div key={report.id} style={{
-              padding: '1rem 0',
-              borderBottom: i < incident.linked_reports.length - 1 ? '1px solid var(--border)' : 'none',
-            }}>
-              <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>
-                Report #{report.id.slice(0, 8)}
-              </p>
+            <div
+              key={report.id}
+              style={{
+                padding: '16px 0',
+                borderBottom: i < incident.linked_reports.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <p className="text-small text-muted font-semibold">Report {report.id.slice(0, 8)}</p>
               {report.text && <p style={{ fontSize: '0.9rem' }}>{report.text}</p>}
-              {report.photos && report.photos.length > 0 && (
-                <div className="image-gallery" style={{ marginTop: '0.5rem' }}>
-                  {report.photos.map((photo, idx) => (
-                    <img key={idx} src={photo.url} alt={'Photo ' + (idx + 1)} className="image-thumbnail" />
-                  ))}
+              {report.photos?.length > 0 && (
+                <div className="image-gallery" style={{ marginTop: 8 }}>
+                  {report.photos.map((photo, idx) => {
+                    const src = resolvePhotoUrl(photo.url);
+                    return src ? (
+                      <div key={idx} className="photo-thumb-wrap">
+                        <img src={src} alt={photo.label || `Photo ${idx + 1}`} className="image-thumbnail" />
+                        {photo.label && <span className="photo-label">{photo.label}</span>}
+                      </div>
+                    ) : null;
+                  })}
                 </div>
               )}
-              <p className="text-small text-muted" style={{ marginTop: '0.5rem' }}>{formatDate(report.created_at)}</p>
+              <p className="text-small text-muted" style={{ marginTop: 8 }}>
+                {formatDate(report.created_at)}
+              </p>
             </div>
           ))}
         </div>
       )}
 
-      {incident.draft_email && (
-        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '3px solid var(--accent)' }}>
-          <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0 }}>Draft Complaint Email</h3>
-            <button className="btn btn-secondary btn-small" onClick={() => setEditingEmail(!editingEmail)}>
+      {(incident.draft_email || emailSubject) && (
+        <div className="panel" style={{ borderLeft: '3px solid var(--primary)' }}>
+          <div className="flex justify-between items-center" style={{ marginBottom: 12 }}>
+            <h3 style={{ margin: 0 }}>Draft complaint email</h3>
+            <button type="button" className="btn btn-secondary btn-small" onClick={() => setEditingEmail((v) => !v)}>
               {editingEmail ? 'Done' : 'Edit'}
             </button>
           </div>
-
-          <div style={{ marginBottom: '0.75rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Subject</p>
+          <div className="form-group">
+            <label>Subject</label>
             {editingEmail ? (
-              <input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+              <input type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
             ) : (
-              <p className="font-bold" style={{ margin: 0, fontSize: '0.9rem' }}>{emailSubject}</p>
+              <p className="font-semibold" style={{ margin: 0 }}>
+                {emailSubject}
+              </p>
             )}
           </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <p className="text-small text-muted font-semibold" style={{ marginBottom: '0.25rem' }}>Message</p>
+          <div className="form-group">
+            <label>Body</label>
             {editingEmail ? (
-              <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows="10"
-                style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} />
+              <textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={10} />
             ) : (
-              <div style={{
-                background: 'var(--bg-card)', padding: '1rem', borderRadius: '0.75rem',
-                fontFamily: 'monospace', fontSize: '0.85rem', whiteSpace: 'pre-wrap',
-                border: '1px solid var(--border)'
-              }}>
-                {emailBody}
-              </div>
+              <div className="email-box">{emailBody}</div>
             )}
           </div>
-
-          <button className="btn btn-primary btn-small" onClick={handleCopyEmail}>
-            {emailCopied ? 'Copied!' : 'Copy Email'}
+          <button type="button" className="btn btn-primary btn-small" onClick={handleCopyEmail}>
+            {emailCopied ? 'Copied' : 'Copy email'}
           </button>
         </div>
       )}

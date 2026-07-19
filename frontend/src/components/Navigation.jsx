@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../ThemeContext';
 import { getCurrentUser, setAuthToken, setCurrentUser } from '../api/client';
 
 export default function Navigation() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const user = getCurrentUser();
@@ -15,64 +16,72 @@ export default function Navigation() {
     navigate('/login');
   };
 
-  const handleNavClick = (path) => {
+  const go = (path) => {
     navigate(path);
     setMenuOpen(false);
   };
 
+  const linkClass = (path) => (location.pathname === path ? 'active' : '');
+
   return (
-    <nav>
-      <div className="container flex justify-between items-center" style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
-        <div
-          onClick={() => navigate('/')}
-          style={{
-            fontWeight: 800,
-            fontSize: '1.25rem',
-            cursor: 'pointer',
-            background: 'var(--gradient-1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
+    <nav className="nav-shell">
+      <div className="container nav-inner">
+        <div className="brand" onClick={() => go('/')}>
           RoadPulse
         </div>
 
         <button
+          type="button"
           className="menu-toggle"
-          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+          onClick={() => setMenuOpen((v) => !v)}
         >
-          {menuOpen ? '✕' : '☰'}
+          {menuOpen ? 'Close' : 'Menu'}
         </button>
 
-        <ul className={menuOpen ? 'show' : ''} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          {user ? (
+        <ul className={menuOpen ? 'show' : ''}>
+          <li>
+            <a href="/dashboard" className={linkClass('/dashboard')} onClick={(e) => { e.preventDefault(); go('/dashboard'); }}>
+              Dashboard
+            </a>
+          </li>
+          {user && (
             <>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/report'); }}>Report</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/my-reports'); }}>My Reports</a></li>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/dashboard'); }}>Dashboard</a></li>
-              {user.role === 'authority' && (
-                <li><a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/authority'); }}>Queue</a></li>
-              )}
-              <li style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-                  {theme === 'dark' ? '☀️' : '🌙'}
-                </button>
-                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-                  {user.email}
+              <li>
+                <a href="/report" className={linkClass('/report')} onClick={(e) => { e.preventDefault(); go('/report'); }}>
+                  Report
                 </a>
               </li>
-            </>
-          ) : (
-            <>
-              <li><a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/dashboard'); }}>Dashboard</a></li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-                  {theme === 'dark' ? '☀️' : '🌙'}
-                </button>
-                <a href="#" onClick={(e) => { e.preventDefault(); handleNavClick('/login'); }}>Sign In</a>
+              <li>
+                <a href="/my-reports" className={linkClass('/my-reports')} onClick={(e) => { e.preventDefault(); go('/my-reports'); }}>
+                  My Reports
+                </a>
               </li>
+              {user.role === 'authority' && (
+                <li>
+                  <a href="/authority" className={linkClass('/authority')} onClick={(e) => { e.preventDefault(); go('/authority'); }}>
+                    Queue
+                  </a>
+                </li>
+              )}
             </>
           )}
+          <li>
+            <button type="button" className="theme-toggle" onClick={toggleTheme} title="Toggle light/dark theme">
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
+          </li>
+          <li>
+            {user ? (
+              <a href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
+                Sign out
+              </a>
+            ) : (
+              <a href="/login" className={linkClass('/login')} onClick={(e) => { e.preventDefault(); go('/login'); }}>
+                Sign in
+              </a>
+            )}
+          </li>
         </ul>
       </div>
     </nav>

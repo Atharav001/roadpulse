@@ -107,7 +107,9 @@ function buildEmailPrompt(issue_type, severity, landmark_description, department
   const severityLabel = {
     low: 'minor',
     med: 'moderate',
-    high: 'critical'
+    medium: 'moderate',
+    high: 'serious',
+    critical: 'critical',
   }[severity] || 'unspecified';
 
   return `Generate a formal complaint email with the following details:
@@ -176,7 +178,9 @@ function generateFallbackEmail(issue_type, severity, landmark_description, depar
   const severityLabel = {
     low: 'minor',
     med: 'moderate',
-    high: 'critical'
+    medium: 'moderate',
+    high: 'serious',
+    critical: 'critical',
   }[severity] || 'unspecified';
 
   const subject = `[RoadPulse] ${issue_type.replace(/_/g, ' ')} - ${landmark_description}`;

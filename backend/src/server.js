@@ -12,6 +12,7 @@ const createReportsRouter = require('./routes/reports');
 const createIncidentsRouter = require('./routes/incidents');
 const createDashboardRouter = require('./routes/dashboard');
 const createAuthRouter = require('./routes/auth');
+const createWardsRouter = require('./routes/wards');
 
 /**
  * Initialize and start the Express server
@@ -47,6 +48,7 @@ function startServer() {
   app.use('/reports', createReportsRouter(pool));
   app.use('/incidents', createIncidentsRouter(pool));
   app.use('/dashboard', createDashboardRouter(pool));
+  app.use('/wards', createWardsRouter(pool));
 
   // 404 handler
   app.use((req, res) => {

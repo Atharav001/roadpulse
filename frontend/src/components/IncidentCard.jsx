@@ -1,13 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const severityColors = {
-  low: 'var(--success)',
-  medium: 'var(--warning)',
-  high: 'var(--danger)',
-  critical: '#7c2d12',
-};
-
 const statusBadges = {
   reported: 'badge-reported',
   routed: 'badge-routed',
@@ -16,40 +9,47 @@ const statusBadges = {
 };
 
 function formatDate(dateString) {
+  if (!dateString) return '—';
   const d = new Date(dateString);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 export default function IncidentCard({ incident }) {
   const navigate = useNavigate();
+  if (!incident) return null;
 
   return (
     <div
-      className="card"
-      onClick={() => navigate('/incident/' + incident.id)}
-      style={{ cursor: 'pointer', marginBottom: '0.75rem', padding: '1.25rem' }}
+      className="list-row"
+      onClick={() => navigate(`/incident/${incident.id || incident.incident_id}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') navigate(`/incident/${incident.id || incident.incident_id}`);
+      }}
     >
-      <div className="flex justify-between items-center" style={{ marginBottom: '0.5rem' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {incident.issue_type?.replace(/_/g, ' ') || 'Unclassified'}
-            <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: severityColors[incident.severity] || 'var(--text-muted)' }}>
-              {incident.severity}
-            </span>
-          </h3>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="list-title">
+          {(incident.issue_type || 'unclassified').replace(/_/g, ' ')}
+          <span className={`severity-${incident.severity || 'medium'}`} style={{ marginLeft: 8, fontSize: '0.8rem' }}>
+            {incident.severity || '—'}
+          </span>
         </div>
-        <span className={'badge ' + (statusBadges[incident.status] || 'badge-reported')}>
-          {incident.status?.replace(/_/g, ' ')}
-        </span>
+        <p className="text-small text-muted" style={{ margin: '4px 0 0' }}>
+          {incident.landmark_description || 'Unknown location'}
+        </p>
+        <p className="text-small text-muted" style={{ margin: '4px 0 0' }}>
+          {incident.report_count || 1} report{(incident.report_count || 1) !== 1 ? 's' : ''} ·{' '}
+          {formatDate(incident.first_reported_at || incident.created_at)}
+        </p>
       </div>
-
-      <p className="text-small text-muted" style={{ margin: '0.25rem 0' }}>
-        {incident.landmark_description || 'Unknown location'}
-      </p>
-
-      <div className="flex gap-4" style={{ marginTop: '0.5rem' }}>
-        <span className="text-small text-muted">Reports: {incident.report_count || 1}</span>
-        <span className="text-small text-muted">{formatDate(incident.first_reported_at || incident.created_at)}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        {incident.status && (
+          <span className={`badge ${statusBadges[incident.status] || 'badge-reported'}`}>
+            {incident.status.replace(/_/g, ' ')}
+          </span>
+        )}
+        {incident.is_escalated && <span className="badge badge-escalated">Escalated</span>}
       </div>
     </div>
   );

@@ -2,61 +2,81 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api/client';
 
+const FEATURES = [
+  {
+    title: 'AI severity grading',
+    desc: 'Two live photos + description classified into issue type and severity in one pass.',
+  },
+  {
+    title: 'Duplicate merging',
+    desc: 'Reports within ~30m of the same type merge into one incident so ward stats stay honest.',
+  },
+  {
+    title: 'Landmark precision',
+    desc: 'Nearby Places landmarks turn raw GPS into a location line authorities can actually find.',
+  },
+  {
+    title: 'Auto complaint draft',
+    desc: 'Routed to the right department with a formal email draft ready to copy.',
+  },
+  {
+    title: 'Public accountability',
+    desc: 'Ward dashboard shows resolution rate, pending queue, and 60-day escalations.',
+  },
+  {
+    title: 'Authority queue',
+    desc: 'One demo login. Department-scoped queue with resolve actions that update the dashboard.',
+  },
+];
+
 export default function Home() {
   const navigate = useNavigate();
   const user = getCurrentUser();
 
   return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
-      <div className="card" style={{ textAlign: 'center', marginBottom: '2rem', padding: '3rem 2rem' }}>
-        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚗</div>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>RoadPulse</h1>
-        <p style={{ fontSize: '1.125rem', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem auto' }}>
-          Report road and traffic issues in your area. AI-powered classification, automatic routing, and public accountability.
+    <div className="container page">
+      <section className="hero-home">
+        <div className="page-kicker">Product Space × Code Benders</div>
+        <h1>RoadPulse</h1>
+        <p className="lede">
+          The layer after reporting: AI severity, real duplicate merging, landmark-precise
+          location, auto-drafted complaints, and a public dashboard that makes response time visible.
         </p>
-
-        {user ? (
-          <div className="grid grid-2" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/report')} style={{ padding: '1rem' }}>
-              Report an Issue
-            </button>
-            <button className="btn btn-secondary" onClick={() => navigate('/dashboard')} style={{ padding: '1rem' }}>
-              View Dashboard
-            </button>
-            <button className="btn btn-secondary" onClick={() => navigate('/my-reports')} style={{ padding: '1rem' }}>
-              My Reports
-            </button>
-            {user.role === 'authority' && (
-              <button className="btn btn-success" onClick={() => navigate('/authority')} style={{ padding: '1rem' }}>
-                Authority Queue
+        <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
+          {user ? (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/report')}>
+                Report an issue
               </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-2" style={{ maxWidth: '400px', margin: '0 auto' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/login')} style={{ padding: '1rem' }}>
-              Sign In
-            </button>
-            <button className="btn btn-secondary" onClick={() => navigate('/dashboard')} style={{ padding: '1rem' }}>
-              View Dashboard
-            </button>
-          </div>
-        )}
-      </div>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+                Public dashboard
+              </button>
+              {user.role === 'authority' && (
+                <button type="button" className="btn btn-accent" onClick={() => navigate('/authority')}>
+                  Authority queue
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/login')}>
+                Sign in to report
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+                View dashboard
+              </button>
+            </>
+          )}
+        </div>
+      </section>
 
-      <div className="grid grid-2 grid-3">
-        {[
-          { icon: '📸', title: 'Easy Reporting', desc: 'Capture photos with GPS coordinates. AI classifies the issue automatically.' },
-          { icon: '📍', title: 'Precise Location', desc: 'Landmark detection pinpoints the exact spot from your GPS coordinates.' },
-          { icon: '🔗', title: 'Smart Merging', desc: 'Duplicate reports within 30m are merged into one incident for accurate counts.' },
-          { icon: '📧', title: 'Auto Email Draft', desc: 'Formal complaint email generated and addressed to the right department.' },
-          { icon: '📊', title: 'Public Dashboard', desc: 'Track resolution rates and response times by ward.' },
-          { icon: '🏛️', title: 'Authority Queue', desc: 'Officials see only their department incidents with one-click resolve.' },
-        ].map((f, i) => (
-          <div key={i} className="card card-static" style={{ textAlign: 'center', padding: '1.5rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>{f.icon}</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>{f.title}</h3>
-            <p className="text-small text-muted" style={{ margin: 0 }}>{f.desc}</p>
+      <div className="feature-list">
+        {FEATURES.map((f) => (
+          <div key={f.title} className="feature-item">
+            <h3>{f.title}</h3>
+            <p className="text-small text-muted" style={{ margin: 0 }}>
+              {f.desc}
+            </p>
           </div>
         ))}
       </div>

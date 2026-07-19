@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CameraCapture from '../components/CameraCapture';
-import { reportsAPI, getCurrentUser } from '../api/client';
+import { getCurrentUser, reportsAPI } from '../api/client';
 
 export default function ReportForm() {
   const navigate = useNavigate();
@@ -13,7 +13,9 @@ export default function ReportForm() {
   const [timestamp, setTimestamp] = useState(null);
   const [description, setDescription] = useState('');
   const [landmark, setLandmark] = useState('');
+  const [wardId, setWardId] = useState('');
   const [draftEmail, setDraftEmail] = useState(null);
+  const [submitMeta, setSubmitMeta] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [landmarkLoading, setLandmarkLoading] = useState(false);
@@ -25,7 +27,8 @@ export default function ReportForm() {
     try {
       const result = await reportsAPI.previewLandmark(lat, lng);
       setLandmark(result.landmark_description || '');
-    } catch (err) {
+      setWardId(result.ward_id || '');
+    } catch {
       setLandmark(`Near ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
     } finally {
       setLandmarkLoading(false);
@@ -34,7 +37,7 @@ export default function ReportForm() {
 
   const handlePhotosCapture = (data) => {
     if (data.latitude == null || data.longitude == null) {
-      setError('GPS location is required. Please enable location access and retake your photos.');
+      setError('GPS location is required. Enable location access and retake your photos.');
       return;
     }
     setPhotos(data.photos);
@@ -46,7 +49,7 @@ export default function ReportForm() {
   };
 
   useEffect(() => {
-    if (step === 2 && latitude && longitude) {
+    if (step === 2 && latitude != null && longitude != null) {
       fetchLandmark(latitude, longitude);
     }
   }, [step, latitude, longitude, fetchLandmark]);
@@ -58,26 +61,31 @@ export default function ReportForm() {
 
     try {
       if (!user) {
-        setError('You must be logged in to submit a report');
-        setLoading(false);
+        setError('You must be signed in to submit a report');
         return;
       }
 
       const reportData = {
-        photos: photos.map(p => ({
-          previewUrl: p.previewUrl,
+        photos: photos.map((p) => ({
+          data: p.data,
           timestamp: p.timestamp,
+          label: p.label,
+          mimeType: 'image/jpeg',
         })),
         latitude,
         longitude,
         timestamp,
+        captured_at: timestamp,
         text: description || '',
+        text_description: description || '',
         user_id: user.user_id,
         landmark_description: landmark || '',
+        ward_id: wardId || undefined,
       };
 
       const response = await reportsAPI.submit(reportData);
       setDraftEmail(response.draft_email);
+      setSubmitMeta(response);
       setSuccessIncidentId(response.incident_id);
       setStep(4);
     } catch (err) {
@@ -89,7 +97,7 @@ export default function ReportForm() {
 
   if (!user) {
     return (
-      <div className="container" style={{ padding: '2rem 1rem' }}>
+      <div className="container page">
         <div className="alert alert-error">
           Please <a href="/login">sign in</a> to submit a report.
         </div>
@@ -98,135 +106,150 @@ export default function ReportForm() {
   }
 
   return (
-    <div className="container" style={{ padding: '2rem 1rem', maxWidth: '600px', margin: '0 auto' }}>
-      <h1>Report a Road Issue</h1>
+    <div className="container page" style={{ maxWidth: 640 }}>
+      <div className="page-kicker">Citizen report</div>
+      <h1>Report a road issue</h1>
+      <p className="text-muted text-small">Camera → confirm location → submit. AI classifies, merges duplicates, and drafts a complaint email.</p>
+
+      <div className="stepper">
+        <div className={`step-dot ${step > 1 ? 'done' : ''} ${step === 1 ? 'active' : ''}`} />
+        <div className={`step-dot ${step > 2 ? 'done' : ''} ${step === 2 ? 'active' : ''}`} />
+        <div className={`step-dot ${step > 3 ? 'done' : ''} ${step === 3 ? 'active' : ''}`} />
+        <div className={`step-dot ${step === 4 ? 'active' : ''}`} />
+      </div>
 
       {step === 1 && (
-        <div className="card">
-          <p>Help us improve our roads by reporting issues. Take two photos of the problem area.</p>
+        <div className="panel">
           {error && <div className="alert alert-error">{error}</div>}
           <CameraCapture onCapture={handlePhotosCapture} maxPhotos={2} />
         </div>
       )}
 
       {step === 2 && (
-        <div className="card">
-          <h2>Describe the Issue</h2>
+        <div className="panel">
+          <h2>Confirm location</h2>
           {error && <div className="alert alert-error">{error}</div>}
-
-          <form>
-            <div className="form-group">
-              <label htmlFor="description">Issue Description</label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the road issue (e.g., large pothole, broken streetlight)"
-                rows="4"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="landmark">
-                Location/Landmark
-                {landmarkLoading && <span className="text-small text-muted"> (detecting...)</span>}
-              </label>
-              <input
-                id="landmark"
-                type="text"
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                placeholder="Auto-detected from GPS..."
-              />
-              <p className="text-small text-muted">
-                Auto-detected from your location. Edit if needed.
-              </p>
-            </div>
-
-            {latitude && longitude && (
-              <p className="text-small text-muted">
-                GPS: {latitude.toFixed(4)}, {longitude.toFixed(4)}
-              </p>
-            )}
-
-            <div className="flex gap-2" style={{ marginTop: '1.5rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
-                &larr; Back
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => setStep(3)}
-                disabled={landmarkLoading}>
-                Next &rarr;
-              </button>
-            </div>
-          </form>
+          <div className="form-group">
+            <label htmlFor="description">What is the problem? (optional)</label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. deep pothole on the right lane"
+              rows={3}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="landmark">
+              Landmark / location
+              {landmarkLoading && <span className="text-muted"> · detecting…</span>}
+            </label>
+            <input
+              id="landmark"
+              type="text"
+              value={landmark}
+              onChange={(e) => setLandmark(e.target.value)}
+              placeholder="Auto-detected from GPS"
+            />
+            <p className="text-small text-muted" style={{ marginTop: 8 }}>
+              Edit if the landmark is wrong. Ward: {wardId || 'detecting…'}
+            </p>
+          </div>
+          {latitude != null && longitude != null && (
+            <p className="text-small text-muted">
+              GPS at capture: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+            </p>
+          )}
+          <div className="flex gap-1" style={{ marginTop: 16 }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
+              Back
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={landmarkLoading}>
+              Review
+            </button>
+          </div>
         </div>
       )}
 
       {step === 3 && (
-        <div className="card">
-          <h2>Review & Submit</h2>
+        <div className="panel">
+          <h2>Review & submit</h2>
           {error && <div className="alert alert-error">{error}</div>}
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h3>Photos ({photos.length})</h3>
-            <div className="image-gallery">
-              {photos.map((photo, index) => (
-                <img key={index} src={photo.previewUrl} alt={`Photo ${index + 1}`} className="image-thumbnail" />
-              ))}
-            </div>
+          <div className="image-gallery" style={{ marginBottom: 16 }}>
+            {photos.map((photo, index) => (
+              <div key={index} className="photo-thumb-wrap">
+                <img src={photo.previewUrl} alt={photo.label} className="image-thumbnail" />
+                <span className="photo-label">{photo.label}</span>
+              </div>
+            ))}
           </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h3>Details</h3>
-            <p><strong>Description:</strong> {description || 'No description'}</p>
-            <p><strong>Location:</strong> {landmark || 'No location specified'}</p>
-            {latitude && longitude && (
-              <p><strong>GPS:</strong> {latitude.toFixed(4)}, {longitude.toFixed(4)}</p>
-            )}
-          </div>
-
-          <div className="flex gap-2">
+          <p><strong>Description:</strong> {description || 'None'}</p>
+          <p><strong>Location:</strong> {landmark || '—'}</p>
+          <p><strong>GPS:</strong> {latitude?.toFixed(5)}, {longitude?.toFixed(5)}</p>
+          <div className="flex gap-1" style={{ marginTop: 16 }}>
             <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>
-              &larr; Back
+              Back
             </button>
             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Submitting...' : 'Submit Report'}
+              {loading ? 'Running AI pipeline…' : 'Submit report'}
             </button>
           </div>
         </div>
       )}
 
       {step === 4 && successIncidentId && (
-        <div className="card">
+        <div className="panel">
           <div className="alert alert-success">
-            <h2 style={{ margin: '0 0 1rem 0' }}>Report Submitted Successfully!</h2>
-            <p>Thank you for helping improve our roads.</p>
-            <p><strong>Incident ID:</strong> {successIncidentId}</p>
+            Report submitted{submitMeta?.merged ? ' and merged into an existing incident' : ''}.
           </div>
-
-          {draftEmail && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3>Email Complaint (for your records)</h3>
-              <div style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: '0.75rem', marginBottom: '1rem', border: '1px solid var(--border)' }}>
-                <p className="font-bold" style={{ marginBottom: '0.5rem' }}>Subject: {draftEmail.subject}</p>
-                <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{draftEmail.body}</p>
+          <p className="text-small text-muted">Incident ID: {successIncidentId}</p>
+          {submitMeta && (
+            <div className="grid grid-2" style={{ margin: '16px 0' }}>
+              <div className="panel-quiet">
+                <div className="stat-label">Issue type</div>
+                <div className="font-bold" style={{ textTransform: 'capitalize' }}>
+                  {(submitMeta.issue_type || '').replace(/_/g, ' ')}
+                </div>
               </div>
-              <button type="button" className="btn btn-secondary btn-small" onClick={() => {
-                const text = `Subject: ${draftEmail.subject}\n\n${draftEmail.body}`;
-                navigator.clipboard.writeText(text);
-                alert('Email copied to clipboard!');
-              }}>
-                Copy Email
+              <div className="panel-quiet">
+                <div className="stat-label">Severity</div>
+                <div className="font-bold">{submitMeta.severity}</div>
+              </div>
+              <div className="panel-quiet">
+                <div className="stat-label">Department</div>
+                <div className="font-bold">{submitMeta.department || '—'}</div>
+              </div>
+              <div className="panel-quiet">
+                <div className="stat-label">Reports on incident</div>
+                <div className="font-bold">{submitMeta.report_count || 1}</div>
+              </div>
+            </div>
+          )}
+          {draftEmail && (
+            <div style={{ marginBottom: 16 }}>
+              <h3>Draft complaint email</h3>
+              <p className="font-semibold text-small" style={{ marginBottom: 8 }}>
+                {draftEmail.subject}
+              </p>
+              <div className="email-box">{draftEmail.body}</div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-small"
+                style={{ marginTop: 12 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(`Subject: ${draftEmail.subject}\n\n${draftEmail.body}`);
+                }}
+              >
+                Copy email
               </button>
             </div>
           )}
-
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <button type="button" className="btn btn-primary" onClick={() => navigate(`/incident/${successIncidentId}`)}>
-              View on Dashboard
+              View incident
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/my-reports')}>
-              My Reports
+              My reports
             </button>
           </div>
         </div>
