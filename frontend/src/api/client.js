@@ -1,7 +1,12 @@
-const API_URL =
+/**
+ * API base:
+ * - Dev: Vite proxies `/api` → http://localhost:5001
+ * - Prod (Vercel): set VITE_API_URL to your hosted backend (e.g. Railway/Render)
+ */
+const API_URL = (
   import.meta.env.VITE_API_URL ||
-  import.meta.env.REACT_APP_API_URL ||
-  'http://localhost:5001';
+  (import.meta.env.DEV ? '/api' : '')
+).replace(/\/$/, '');
 
 function getToken() {
   return localStorage.getItem('jwt_token');
@@ -18,10 +23,16 @@ async function fetchAPI(endpoint, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch {
+    throw new Error(
+      'Cannot reach the RoadPulse API (Failed to fetch). Start the backend on port 5001, or set VITE_API_URL for production.'
+    );
+  }
 
   if (!response.ok) {
     let message = 'API request failed';
@@ -50,16 +61,17 @@ export const authAPI = {
       body: JSON.stringify({ device_id: deviceId }),
     }),
 
-  register: (email, password, role = 'citizen') =>
+  register: (email, password) =>
     fetchAPI('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, role }),
+      body: JSON.stringify({ email, password, role: 'citizen' }),
     }),
 
-  googleLogin: ({ email, name, google_id }) =>
+  /** Real Google Sign-In: send GIS ID token (credential) */
+  googleCredential: (credential) =>
     fetchAPI('/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ email, name, google_id }),
+      body: JSON.stringify({ credential }),
     }),
 };
 
@@ -118,8 +130,7 @@ export const incidentsAPI = {
 export const dashboardAPI = {
   getOverview: () => fetchAPI('/dashboard/overview', { method: 'GET' }),
 
-  getWardStats: (wardId) =>
-    fetchAPI(`/dashboard/ward/${wardId}`, { method: 'GET' }),
+  getWardStats: (wardId) => fetchAPI(`/dashboard/ward/${wardId}`, { method: 'GET' }),
 
   getPendingIncidents: (days = 60) =>
     fetchAPI(`/dashboard/pending?days=${days}`, { method: 'GET' }),
@@ -154,5 +165,5 @@ export function isAuthenticated() {
 }
 
 export function getApiBaseUrl() {
-  return API_URL;
+  return API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 }

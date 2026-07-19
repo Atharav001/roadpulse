@@ -24,8 +24,26 @@ function startServer() {
   // Create Express app
   const app = express();
 
-  // Middleware
-  app.use(cors());
+  // CORS — allow local Vite + Vercel (set CORS_ORIGINS comma-separated)
+  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  app.use(cors({
+    origin(origin, callback) {
+      // Allow non-browser tools (no Origin) and configured frontends
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+      // Allow any *.vercel.app preview/production URL when CORS_ALLOW_VERCEL=true
+      if (process.env.CORS_ALLOW_VERCEL === 'true' && /\.vercel\.app$/.test(new URL(origin).hostname)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  }));
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
