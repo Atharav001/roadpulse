@@ -40,6 +40,10 @@ export default function ReportForm() {
       setError('GPS location is required. Enable location access and retake your photos.');
       return;
     }
+    if (!data.photos || data.photos.length < 2 || data.photos.length > 4) {
+      setError('Submit between 2 and 4 live photos.');
+      return;
+    }
     setPhotos(data.photos);
     setLatitude(data.latitude);
     setLongitude(data.longitude);
@@ -71,6 +75,9 @@ export default function ReportForm() {
           timestamp: p.timestamp,
           label: p.label,
           mimeType: 'image/jpeg',
+          latitude: p.latitude,
+          longitude: p.longitude,
+          live_capture: true,
         })),
         latitude,
         longitude,
@@ -81,6 +88,7 @@ export default function ReportForm() {
         user_id: user.user_id,
         landmark_description: landmark || '',
         ward_id: wardId || undefined,
+        location_confirmed: true,
       };
 
       const response = await reportsAPI.submit(reportData);
@@ -110,7 +118,7 @@ export default function ReportForm() {
       <p className="eyebrow">Citizen report</p>
       <h1>Report a road issue</h1>
       <p className="text-muted text-small" style={{ marginBottom: 20 }}>
-        Three steps: capture → confirm location → submit.
+        Confirm GPS first → 2–4 live photos (stamped) → landmark → submit.
       </p>
 
       <div className="stepper">

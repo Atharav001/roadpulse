@@ -16,29 +16,29 @@ import {
 
 const STEPS = [
   {
-    icon: IconCamera,
-    title: 'Capture on-site',
-    desc: 'Two live photos with GPS locked at shutter — close-up and context.',
+    icon: IconMapPin,
+    title: 'Confirm GPS first',
+    desc: 'Location is required before the camera opens — no gallery spoofing.',
   },
   {
-    icon: IconSpark,
-    title: 'AI classifies & routes',
-    desc: 'Severity grading, landmark detection, duplicate merge, department routing.',
+    icon: IconCamera,
+    title: '2–4 live stamped photos',
+    desc: 'Each shutter locks GPS + time onto the image. AI grades and merges nearby reports.',
   },
   {
     icon: IconChart,
-    title: 'Track in public',
-    desc: 'Follow your ticket and see ward resolution performance, openly.',
+    title: 'Track & community',
+    desc: 'Follow your reports, browse nearby issues, and watch ward resolution publicly.',
   },
 ];
 
 const FEATURES = [
-  { icon: IconShield, title: 'AI severity grading', desc: 'Every report scored for urgency before it enters the queue.' },
-  { icon: IconMerge, title: 'Duplicate merging', desc: 'Same issue within ~30m becomes one incident — honest ward stats.' },
-  { icon: IconMapPin, title: 'Landmark precision', desc: 'GPS becomes a findable location line for field teams.' },
+  { icon: IconShield, title: 'Live-only capture', desc: 'Gallery and AI images blocked. GPS stamped at shutter for credibility.' },
+  { icon: IconMerge, title: 'Duplicate merging', desc: 'Same issue type within ~15m merges — all reporters and photos kept.' },
+  { icon: IconMapPin, title: 'Location-first', desc: 'Last GPS saved if you go offline; community filters by your area.' },
   { icon: IconMail, title: 'Complaint email draft', desc: 'Formal email ready for the assigned department.' },
-  { icon: IconLayers, title: 'Public transparency', desc: 'Pending queues and 60-day escalations visible to everyone.' },
-  { icon: IconCheck, title: 'Authority resolve', desc: 'Department queue with status updates that refresh the dashboard.' },
+  { icon: IconLayers, title: 'Community nearby', desc: 'See open issues around you with distance and reporter counts.' },
+  { icon: IconCheck, title: 'Authority resolve', desc: 'Department queue updates feed the public dashboard numbers.' },
 ];
 
 export default function Home() {
@@ -165,9 +165,14 @@ export default function Home() {
             <h2>Public ward performance, always on</h2>
             <p>Resolution rates, pending queues, and escalated issues — visible without a login.</p>
           </div>
-          <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
-            View transparency dashboard <IconArrowRight />
-          </button>
+          <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
+              Dashboard <IconArrowRight />
+            </button>
+            <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate('/community')}>
+              Community nearby
+            </button>
+          </div>
         </div>
       </section>
     </div>

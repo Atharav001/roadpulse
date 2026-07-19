@@ -15,7 +15,8 @@ export default function Footer() {
         <div>
           <div className="footer-heading">Platform</div>
           <Link to="/report">Report an issue</Link>
-          <Link to="/my-reports">Track reports</Link>
+          <Link to="/community">Community nearby</Link>
+          <Link to="/my-reports">My reports</Link>
           <Link to="/dashboard">Public dashboard</Link>
         </div>
         <div>

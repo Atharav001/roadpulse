@@ -58,6 +58,62 @@ function createIncidentsRouter(pool) {
     }
   });
 
+  // Nearby community incidents (radius meters, default 2000m / ~local area)
+  router.get('/nearby', async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      const radius = parseFloat(req.query.radius_m) || 2000;
+      const limit = parseInt(req.query.limit, 10) || 40;
+
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        return res.status(400).json({ error: 'lat and lng query params are required' });
+      }
+
+      const result = await pool.query(
+        `SELECT i.id, i.issue_type, i.severity, i.status,
+                i.landmark_description, i.ward_id, i.department,
+                i.report_count, i.first_reported_at, i.last_reported_at,
+                i.latitude, i.longitude, i.created_at, i.updated_at,
+                (
+                  6371000 * ACOS(
+                    LEAST(1.0,
+                      COS(RADIANS($1::numeric)) * COS(RADIANS(i.latitude))
+                      * COS(RADIANS(i.longitude) - RADIANS($2::numeric))
+                      + SIN(RADIANS($1::numeric)) * SIN(RADIANS(i.latitude))
+                    )
+                  )
+                ) AS distance_m
+         FROM incidents i
+         WHERE i.latitude IS NOT NULL AND i.longitude IS NOT NULL
+           AND i.status != 'resolved'
+           AND (
+             6371000 * ACOS(
+               LEAST(1.0,
+                 COS(RADIANS($1::numeric)) * COS(RADIANS(i.latitude))
+                 * COS(RADIANS(i.longitude) - RADIANS($2::numeric))
+                 + SIN(RADIANS($1::numeric)) * SIN(RADIANS(i.latitude))
+               )
+             )
+           ) <= $3
+         ORDER BY distance_m ASC
+         LIMIT $4`,
+        [lat, lng, radius, limit]
+      );
+
+      result.rows.forEach(addEscalationFlag);
+      return res.status(200).json({
+        incidents: result.rows,
+        count: result.rows.length,
+        center: { lat, lng },
+        radius_m: radius,
+      });
+    } catch (error) {
+      console.error('Error fetching nearby incidents:', error.message);
+      return res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+  });
+
   router.get('/:id', async (req, res) => {
     try {
       const { id } = req.params;
@@ -66,6 +122,7 @@ function createIncidentsRouter(pool) {
         `SELECT i.id, i.issue_type, i.severity, i.status,
                 i.landmark_description, i.ward_id, i.department,
                 i.report_count, i.first_reported_at, i.last_reported_at,
+                i.latitude, i.longitude,
                 i.created_at, i.updated_at, i.draft_email_subject, i.draft_email_body
          FROM incidents i WHERE i.id = $1`,
         [id]
@@ -79,7 +136,10 @@ function createIncidentsRouter(pool) {
       addEscalationFlag(incident);
 
       const reportsResult = await pool.query(
-        `SELECT r.id, r.photos, r.text, r.issue_type, r.severity, r.landmark_description, r.created_at
+        `SELECT r.id, r.photos, r.photo_closeup_url, r.photo_context_url,
+                COALESCE(r.text_description, r.text) AS text,
+                r.issue_type, r.severity, r.landmark_description,
+                r.latitude, r.longitude, r.captured_at, r.created_at, r.user_id
          FROM reports r
          JOIN incident_reports ir ON r.id = ir.report_id
          WHERE ir.incident_id = $1

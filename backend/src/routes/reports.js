@@ -52,8 +52,13 @@ function createReportsRouter(pool) {
         return res.status(403).json({ error: 'Cannot submit reports for another user' });
       }
 
-      if (!photos || !Array.isArray(photos) || photos.length < 2) {
-        return res.status(400).json({ error: 'Exactly 2 photos are required (closeup + context)' });
+      if (!photos || !Array.isArray(photos) || photos.length < 2 || photos.length > 4) {
+        return res.status(400).json({ error: 'Between 2 and 4 live photos are required' });
+      }
+
+      const allLive = photos.every((p) => p.data && typeof p.data === 'string' && p.data.startsWith('data:image'));
+      if (!allLive) {
+        return res.status(400).json({ error: 'Only live camera captures (base64 images) are accepted' });
       }
 
       const lat = latitude != null ? parseFloat(latitude) : null;

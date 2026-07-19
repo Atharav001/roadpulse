@@ -41,6 +41,7 @@ export default function Navigation() {
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
           <div className="nav-center">
             <NavLink to="/dashboard" onClick={close}>Dashboard</NavLink>
+            <NavLink to="/community" onClick={close}>Community</NavLink>
             <NavLink to="/report" onClick={close}>Report</NavLink>
             {user && <NavLink to="/my-reports" onClick={close}>My reports</NavLink>}
             {user?.role === 'authority' && (

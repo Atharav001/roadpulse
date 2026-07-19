@@ -1,4 +1,5 @@
-const CLUSTER_THRESHOLD = parseFloat(process.env.CLUSTERING_DISTANCE_THRESHOLD) || 30;
+// ~15m default: phones rarely get true 5m GPS accuracy; override via env for tighter merge
+const CLUSTER_THRESHOLD = parseFloat(process.env.CLUSTERING_DISTANCE_THRESHOLD) || 15;
 
 const SEVERITY_RANK = { low: 1, medium: 2, high: 3, critical: 4 };
 
@@ -8,7 +9,7 @@ function normalizeSeverity(severity) {
 }
 
 /**
- * Clustering Agent: merge into open incident within ~30m + same issue_type, else create.
+ * Clustering Agent: merge into open incident within ~15m + same issue_type, else create.
  */
 async function clusterOrCreate(incidentData, pool) {
   const {

@@ -96,6 +96,16 @@ export const incidentsAPI = {
     return fetchAPI(`/incidents?${params.toString()}`, { method: 'GET' });
   },
 
+  nearby: ({ lat, lng, radius_m = 2000, limit = 40 }) => {
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lng: String(lng),
+      radius_m: String(radius_m),
+      limit: String(limit),
+    });
+    return fetchAPI(`/incidents/nearby?${params.toString()}`, { method: 'GET' });
+  },
+
   getById: (incidentId) => fetchAPI(`/incidents/${incidentId}`, { method: 'GET' }),
 
   updateStatus: (incidentId, status) =>
