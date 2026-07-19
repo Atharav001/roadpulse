@@ -76,10 +76,10 @@ export default function Home() {
               landmark-precise location, and a public dashboard that makes response time visible.
             </p>
             <div className="hero-cta">
-              <button type="button" className="btn btn-primary btn-lg" onClick={() => go('/report')}>
+              <button type="button" className="btn btn-accent btn-lg" onClick={() => go('/report')}>
                 Report an issue <IconArrowRight />
               </button>
-              <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate('/dashboard')}>
+              <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
                 Open dashboard
               </button>
             </div>

@@ -7,17 +7,17 @@ import { IconAlert, IconChart } from '../components/Icons';
 import { dashboardAPI, wardsAPI } from '../api/client';
 
 const STATUS_COLORS = {
-  reported: '#F59E0B',
-  routed: '#2DD4BF',
-  in_progress: '#38BDF8',
-  resolved: '#34D399',
+  reported: '#C45C26',
+  routed: '#1E4A7A',
+  in_progress: '#5B7C99',
+  resolved: '#2F6B4F',
 };
 
 const SEVERITY_COLORS = {
-  critical: '#F43F5E',
-  high: '#F97316',
-  medium: '#FBBF24',
-  low: '#34D399',
+  critical: '#9B3B2E',
+  high: '#C45C26',
+  medium: '#A67C00',
+  low: '#2F6B4F',
 };
 
 const TABS = [
@@ -125,7 +125,7 @@ export default function Dashboard() {
   }, [stats]);
 
   const typeSegments = useMemo(() => {
-    const palette = ['#2DD4BF', '#38BDF8', '#F59E0B', '#A78BFA', '#F472B6', '#94A3B8'];
+    const palette = ['#1E4A7A', '#C45C26', '#2F6B4F', '#5B7C99', '#A67C00', '#6B7785'];
     return (stats?.by_issue_type || []).map((row, i) => ({
       id: row.issue_type,
       label: row.issue_type.replace(/_/g, ' '),
@@ -171,7 +171,7 @@ export default function Dashboard() {
                 <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/report')}>
+            <button type="button" className="btn btn-accent" onClick={() => navigate('/report')}>
               Report issue
             </button>
           </div>

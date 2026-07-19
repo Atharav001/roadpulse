@@ -1,9 +1,5 @@
 import React from 'react';
 
-/**
- * Horizontal pooled issue representation — severity / status distribution.
- * Looks like a professional analytics segment bar (not a toy pie chart).
- */
 export function SegmentPool({ title, segments, emptyLabel = 'No data' }) {
   const total = segments.reduce((sum, s) => sum + (s.value || 0), 0);
   if (!total) {
@@ -45,7 +41,6 @@ export function SegmentPool({ title, segments, emptyLabel = 'No data' }) {
   );
 }
 
-/** Donut-style resolution ring for ward KPI */
 export function ResolutionRing({ percent = 0, label = 'Resolved', size = 132 }) {
   const p = Math.max(0, Math.min(100, Number(percent) || 0));
   const stroke = 10;
@@ -79,8 +74,8 @@ export function ResolutionRing({ percent = 0, label = 'Resolved', size = 132 }) 
         />
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#2DD4BF" />
-            <stop offset="100%" stopColor="#0F766E" />
+            <stop offset="0%" stopColor="#2F6B4F" />
+            <stop offset="100%" stopColor="#1E4A7A" />
           </linearGradient>
         </defs>
       </svg>
